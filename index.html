@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cantera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef1ee;
+  --panel: #ffffff;
+  --ink: #1b2a41;
+  --muted: #5b6b78;
+  --line: #cfd8d2;
+  --accent: #c8352f;
+  --accent-ink: #ffffff;
+  --bar: #cfe3d6;
+  --notice-bg: #fff3d6;
+  --notice-line: #d9b240;
+  --error-bg: #fde8e6;
+  --error-line: #c8352f;
+  --head-bg: #e3e9e5;
+  --focus: #1b6fd1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a22;
+    --panel: #16232d;
+    --ink: #e6edf1;
+    --muted: #93a4b0;
+    --line: #2a3b47;
+    --accent: #ef6a62;
+    --accent-ink: #1a0b0a;
+    --bar: #1f4130;
+    --notice-bg: #3a3118;
+    --notice-line: #8a7326;
+    --error-bg: #3b1d1b;
+    --error-line: #ef6a62;
+    --head-bg: #1d2e3a;
+    --focus: #6aaeff;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1a22; --panel: #16232d; --ink: #e6edf1; --muted: #93a4b0; --line: #2a3b47;
+  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #1f4130; --notice-bg: #3a3118;
+  --notice-line: #8a7326; --error-bg: #3b1d1b; --error-line: #ef6a62; --head-bg: #1d2e3a; --focus: #6aaeff;
+}
+
+* { box-sizing: border-box; }
+html { color-scheme: light dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+
+header.top { padding: 28px 0 16px; }
+h1 {
+  margin: 0;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: clamp(3rem, 9vw, 5.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+h1 .mark { color: var(--accent); }
+.lede { margin: 10px 0 0; color: var(--muted); max-width: 60ch; }
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end;
+  padding: 14px 0 12px; border-top: 2px solid var(--ink);
+}
+.field { display: flex; flex-direction: column; gap: 3px; font-size: 0.875rem; color: var(--muted); }
+.field input[type="search"], .field input[type="number"], .field select {
+  font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; min-height: 38px;
+}
+.field input[type="search"] { width: min(260px, 100%); }
+.field input[type="number"] { width: 5.5rem; }
+.range { display: flex; gap: 6px; align-items: center; }
+.check { display: flex; gap: 8px; align-items: center; min-height: 38px; color: var(--ink); font-size: 0.95rem; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.spacer { flex: 1 1 auto; }
+button.btn {
+  font: inherit; font-weight: 600; cursor: pointer; min-height: 38px; padding: 7px 14px;
+  border-radius: 4px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink);
+}
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.btn:hover { filter: brightness(0.96); }
+
+#status { min-height: 1.4em; margin: 4px 0 10px; color: var(--muted); font-size: 0.95rem; }
+.progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 6px; max-width: 360px; }
+.progress > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+.notice {
+  border: 1px solid var(--notice-line); background: var(--notice-bg);
+  border-left-width: 5px; border-radius: 4px; padding: 10px 14px; margin: 0 0 12px; max-width: 80ch;
+}
+.notice.error { border-color: var(--error-line); background: var(--error-bg); }
+.notice p { margin: 0 0 6px; }
+.notice p:last-child { margin: 0; }
+.notice code { font-size: 0.9em; }
+
+.tablewrap {
+  overflow: auto; max-height: 78vh; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px;
+}
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; white-space: nowrap; text-align: right; border-bottom: 1px solid var(--line); }
+th {
+  position: sticky; top: 0; z-index: 2; background: var(--head-bg); font-weight: 600;
+  font-size: 0.9rem; padding: 0; border-bottom: 2px solid var(--ink);
+}
+th button {
+  all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: flex-end;
+  gap: 4px; width: 100%; padding: 9px 10px; cursor: pointer;
+}
+th button:hover { background: rgba(0,0,0,.06); }
+th button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+th.l button, td.l { justify-content: flex-start; text-align: left; }
+th[aria-sort="ascending"] button::after { content: "▲"; font-size: .65em; color: var(--accent); }
+th[aria-sort="descending"] button::after { content: "▼"; font-size: .65em; color: var(--accent); }
+td.l { text-align: left; }
+tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+
+th.c-n, td.c-n { position: sticky; left: 0; width: 3.2rem; min-width: 3.2rem; color: var(--muted); z-index: 1; background: var(--panel); }
+th.c-n { z-index: 3; background: var(--head-bg); }
+th.c-name, td.c-name { position: sticky; left: 3.2rem; z-index: 1; background: var(--panel); border-right: 1px solid var(--line); }
+th.c-name { z-index: 3; background: var(--head-bg); }
+tbody tr:hover td.c-n, tbody tr:hover td.c-name { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+
+td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
+td.c-name a:hover { text-decoration-color: var(--accent); }
+td.c-name .pid { margin-left: 8px; color: var(--muted); font-size: .8rem; }
+
+td.pos {
+  min-width: 5.2rem;
+  background-image: linear-gradient(to right, var(--bar) var(--w, 0%), transparent var(--w, 0%));
+  background-repeat: no-repeat;
+}
+.dim { color: var(--muted); }
+.tag {
+  display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: .8rem;
+  border: 1px solid var(--accent); color: var(--accent); font-weight: 600;
+}
+.empty { padding: 36px 16px; text-align: center; color: var(--muted); }
+
+details.formulas { margin: 22px 0 40px; max-width: 900px; }
+details.formulas summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+details.formulas table { margin-top: 10px; background: var(--panel); border: 1px solid var(--line); }
+details.formulas td, details.formulas th { text-align: left; position: static; padding: 7px 10px; white-space: normal; }
+details.formulas th { font-size: .9rem; }
+details.formulas p { max-width: 70ch; color: var(--muted); }
+
+.who { align-self: center; font-size: .9rem; font-weight: 600; padding: 3px 9px; border-radius: 3px; border: 1px solid var(--line); background: var(--panel); }
+
+dialog#dlg {
+  width: min(420px, calc(100vw - 32px)); padding: 22px; border: 2px solid var(--ink); border-radius: 6px;
+  background: var(--panel); color: var(--ink);
+}
+dialog#dlg::backdrop { background: rgba(10, 20, 30, .55); }
+dialog#dlg h2 {
+  margin: 0 0 6px; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 2rem; line-height: 1; font-weight: 700;
+}
+dialog#dlg .hint { margin: 0 0 14px; color: var(--muted); font-size: .92rem; }
+dialog#dlg .field { margin-bottom: 12px; }
+dialog#dlg .field input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-height: 40px; }
+dialog#dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); font-weight: 600; font-size: .92rem; }
+dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+@media (max-width: 640px) {
+  th.c-name, td.c-name { left: 2.6rem; }
+  th.c-n, td.c-n { width: 2.6rem; min-width: 2.6rem; padding-left: 6px; padding-right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .progress > i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 id="title">Cantera<span class="mark">.</span></h1>
+    <p class="lede" id="lede">Cargando jugadores…</p>
+  </header>
+
+  <section class="toolbar" aria-label="Filtros">
+    <label class="field">Buscar
+      <input type="search" id="q" placeholder="Nombre, equipo o PID" autocomplete="off">
+    </label>
+    <div class="field" role="group" aria-label="Edad">
+      Edad
+      <span class="range">
+        <input type="number" id="ageMin" min="0" max="99" placeholder="mín" aria-label="Edad mínima">
+        <span aria-hidden="true">a</span>
+        <input type="number" id="ageMax" min="0" max="99" placeholder="máx" aria-label="Edad máxima">
+      </span>
+    </div>
+    <label class="field">Skills
+      <select id="skillsFilter">
+        <option value="all">Todas</option>
+        <option value="visible">Solo visibles</option>
+        <option value="hidden">Solo ocultas</option>
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" id="withForm"> Con forma</label>
+    <span class="spacer"></span>
+    <span class="who" id="who" hidden></span>
+    <button class="btn" id="login" type="button">Conectar a Sokker</button>
+    <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
+    <button class="btn" id="reload" type="button">Actualizar datos</button>
+    <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
+  </section>
+
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="notices"></div>
+
+  <div class="tablewrap">
+    <table id="tbl">
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+
+  <details class="formulas">
+    <summary>Cómo se calcula cada posición</summary>
+    <table>
+      <thead><tr><th>Posición</th><th>Fórmula</th><th>Peso</th></tr></thead>
+      <tbody>
+        <tr><td>F</td><td><strong>F = 0</strong> con «Con forma» apagado. <strong>F = Forma / 10 − 1</strong> con «Con forma» encendido.</td><td>—</td></tr>
+        <tr><td>Portero</td><td>3·(Por+F) + 2·(Rap+F) + (Pas+F)/3</td><td>5,3</td></tr>
+        <tr><td>Defensa</td><td>4·(Def+F) + 3·(Rap+F) + (Téc+F)</td><td>8</td></tr>
+        <tr><td>Lateral</td><td>(Defensa + M.Def) / 2</td><td>12</td></tr>
+        <tr><td>M.Def</td><td>4·(Rap+F) + 4·(Pas+F) + 3·(Téc+F) + 3·(Def+F) + 2·(Cre+F)</td><td>16</td></tr>
+        <tr><td>M.Of</td><td>4·(Rap+F) + 4·(Pas+F) + 3·(Téc+F) + 3·(Cre+F) + 2·(Def+F)</td><td>16</td></tr>
+        <tr><td>M.Prom</td><td>(M.Def + M.Of) / 2</td><td>16</td></tr>
+        <tr><td>Delantero</td><td>(Ano+F) + (Rap+F) + (Téc+F)</td><td>3</td></tr>
+      </tbody>
+    </table>
+    <p>El peso es la suma de los coeficientes. Por eso un M.Def llega a ~200 y un Delantero a ~41: no tiene sentido comparar posiciones entre sí. La barra de cada celda compara solo dentro de su columna.</p>
+  </details>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form id="lgForm">
+    <h2 id="dlgTitle">Conectar a Sokker</h2>
+    <p class="hint">Tu usuario y tu contraseña se envían directo a sokker.org. Esta página no los guarda. Con la sesión iniciada se ven las skills de tus propios jugadores y de los que están en venta.</p>
+    <label class="field">Usuario
+      <input id="lgUser" name="username" autocomplete="username" required>
+    </label>
+    <label class="field">Contraseña
+      <input id="lgPass" name="password" type="password" autocomplete="current-password" required>
+    </label>
+    <p class="msg" id="lgMsg" role="alert"></p>
+    <div class="actions">
+      <button class="btn" id="lgCancel" type="button">Cancelar</button>
+      <button class="btn primary" id="lgOk" type="submit">Conectar</button>
+    </div>
+  </form>
+</dialog>
+
+<noscript>Esta página necesita JavaScript para mostrar la tabla.</noscript>
+
+<script>
+"use strict";
+
+/* ─────────────── Configuración: lo único que normalmente hay que tocar ─────────────── */
+const CONFIG = {
+  title: "Cantera",
+  sheetId: "1kBi5kAlC7dlmQ3jPi5D1SbtIkNME8KI5SxIG0XRIMWE",
+  sheetTab: "",                       // nombre de la pestaña; vacío = la primera
+  apiBase: "https://sokker.org/api",
+  staticData: "data/players.json",    // si existe, se usa en vez de llamar a la API desde el navegador
+  cacheHours: 6,
+  concurrency: 4,
+  timeoutMs: 15000,
+  // Nombres de los campos del login (POST /auth/login). Deben coincidir con
+  // «LoginRequest» en https://sokker.org/apidoc.html (sección Schemas).
+  loginFields: { username: "login", password: "password" },
+  // Otros campos de LoginRequest que se envían tal cual. remember: false = no recordar la sesión.
+  loginExtra: { remember: false }
+};
+
+/* ─────────────── Columnas y posiciones ─────────────── */
+const POSITIONS = [
+  { key: "gk",    label: "Portero",   weight: 16 / 3 },
+  { key: "def",   label: "Defensa",   weight: 8 },
+  { key: "lat",   label: "Lateral",   weight: 12 },
+  { key: "mdef",  label: "M.Def",     weight: 16 },
+  { key: "mof",   label: "M.Of",      weight: 16 },
+  { key: "mprom", label: "M.Prom",    weight: 16 },
+  { key: "att",   label: "Delantero", weight: 3 }
+];
+const COLS = [
+  { key: "n",        label: "#",                 cls: "c-n", left: true },
+  { key: "name",     label: "Jugador",           cls: "c-name", left: true },
+  { key: "age",      label: "Edad" },
+  { key: "team",     label: "Equipo",            left: true },
+  { key: "value",    label: "Valor" },
+  { key: "form",     label: "Forma" },
+  { key: "disc",     label: "Disc. táctica" },
+  { key: "teamwork", label: "Trabajo en equipo" },
+  { key: "exp",      label: "Exp." },
+  { key: "injury",   label: "Estado",            left: true },
+  ...POSITIONS.map(p => ({ key: p.key, label: p.label, pos: true }))
+];
+
+const SKILL_KEYS = ["stamina", "pace", "technique", "passing", "keeper", "defender", "playmaker", "striker"];
+const REQUIRED_SKILLS = ["keeper", "pace", "passing", "defender", "technique", "playmaker", "striker"];
+// Nombres con que puede venir cada skill en la API o en columnas extra de la hoja.
+const SKILL_ALIASES = {
+  stamina:   ["stamina", "stam", "res", "resistencia"],
+  pace:      ["pace", "rap", "rapidez"],
+  technique: ["technique", "tech", "tec", "téc", "tecnica", "técnica"],
+  passing:   ["passing", "pass", "pas", "pase"],
+  keeper:    ["keeper", "goalkeeping", "gk", "por", "portero"],
+  defender:  ["defender", "defending", "def", "defensa"],
+  playmaker: ["playmaker", "playmaking", "pm", "cre", "creacion", "creación"],
+  striker:   ["striker", "scoring", "str", "ano", "anotacion", "anotación"]
+};
+
+/* ─────────────── Utilidades ─────────────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = v => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (v && typeof v === "object") { const x = v.value ?? v.level; if (typeof x === "number" && Number.isFinite(x)) return x; }
+  return null;
+};
+const nf = new Intl.NumberFormat("es-CL");
+const fmtDate = t => new Date(t).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" });
+
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// Encuentra la fila de encabezados (la que tiene una celda «PID») y arma la lista de jugadores.
+function rowsToPlayers(rows) {
+  const h = rows.findIndex(r => r.some(c => c.trim().toUpperCase() === "PID"));
+  if (h < 0) throw new Error("No encontré la columna PID en la hoja.");
+  const head = rows[h].map(c => c.trim().toLowerCase());
+  const iPid = head.indexOf("pid");
+  const iName = ["player", "jugador", "nombre"].map(k => head.indexOf(k)).find(i => i >= 0) ?? -1;
+  const iN = head.indexOf("#");
+  const skillCols = {};
+  for (const key of SKILL_KEYS) {
+    const i = head.findIndex(c => SKILL_ALIASES[key].includes(c));
+    if (i >= 0) skillCols[key] = i;
+  }
+  const seen = new Set(), out = [];
+  for (const r of rows.slice(h + 1)) {
+    const pid = (r[iPid] || "").trim();
+    if (!/^\d+$/.test(pid) || seen.has(pid)) continue;
+    seen.add(pid);
+    const skills = {};
+    for (const [k, i] of Object.entries(skillCols)) {
+      const v = (r[i] || "").trim().replace(",", ".");
+      if (v !== "" && Number.isFinite(Number(v))) skills[k] = Number(v);
+    }
+    out.push({ n: Number(r[iN]) || out.length + 1, name: iName >= 0 ? (r[iName] || "").trim() : "", pid, skills });
+  }
+  if (!out.length) throw new Error("La hoja no tiene ningún PID numérico.");
+  return out;
+}
+
+function pickSkills(apiSkills, sheetSkills) {
+  const lower = {};
+  for (const [k, v] of Object.entries(apiSkills || {})) lower[k.toLowerCase()] = v;
+  const sk = {};
+  for (const key of SKILL_KEYS) {
+    let v = null;
+    for (const a of SKILL_ALIASES[key]) { if (a in lower) { v = num(lower[a]); if (v !== null) break; } }
+    if (v === null && sheetSkills && key in sheetSkills) v = sheetSkills[key];
+    sk[key] = v;
+  }
+  sk.form = num(apiSkills?.form);
+  return sk;
+}
+const hasSkills = sk => !!sk && REQUIRED_SKILLS.every(k => Number.isFinite(sk[k]));
+
+function scores(sk, F) {
+  const g = k => sk[k] + F;
+  const gk = 3 * g("keeper") + 2 * g("pace") + g("passing") / 3;
+  const def = 4 * g("defender") + 3 * g("pace") + g("technique");
+  const mdef = 4 * g("pace") + 4 * g("passing") + 3 * g("technique") + 3 * g("defender") + 2 * g("playmaker");
+  const mof = 4 * g("pace") + 4 * g("passing") + 3 * g("technique") + 3 * g("playmaker") + 2 * g("defender");
+  return { gk, def, lat: (def + mdef) / 2, mdef, mof, mprom: (mdef + mof) / 2, att: g("striker") + g("pace") + g("technique") };
+}
+
+function normalize(row, api) {
+  const p = {
+    n: row.n, name: row.name, pid: row.pid,
+    link: "https://sokker.org/player/PID/" + row.pid,
+    loaded: false, failed: false, age: null, team: "", value: null, currency: "",
+    form: null, disc: null, teamwork: null, exp: null, injury: 0, nt: "", skills: null
+  };
+  const i = api && api.info;
+  if (i) {
+    p.loaded = true;
+    p.name = i.name?.full || row.name;
+    p.age = num(i.characteristics?.age);
+    p.team = i.team?.name || "";
+    p.value = num(i.value?.value);
+    p.currency = i.value?.currency || "";
+    const s = i.skills || {};
+    p.form = num(s.form); p.disc = num(s.tacticalDiscipline); p.teamwork = num(s.teamwork); p.exp = num(s.experience);
+    p.injury = num(i.injury?.daysRemaining) > 0 ? i.injury.daysRemaining : 0;
+    p.nt = i.nationalType || "";
+    p.skills = pickSkills(s, row.skills);
+  } else if (Object.keys(row.skills || {}).length) {
+    p.skills = pickSkills({}, row.skills);
+  }
+  return p;
+}
+
+/* ─────────────── Estado ─────────────── */
+const state = {
+  players: [], q: "", ageMin: "", ageMax: "", skills: "all", withForm: false,
+  sort: { key: "n", dir: 1 }, stamp: null, source: "",
+  session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
+};
+
+/* ─────────────── Caché local (solo modo en vivo) ─────────────── */
+const cacheKey = pid => "cantera:v1:" + pid;
+function readCache(pid) {
+  try {
+    const raw = localStorage.getItem(cacheKey(pid));
+    if (!raw) return null;
+    const { t, d } = JSON.parse(raw);
+    if (Date.now() - t > CONFIG.cacheHours * 3600e3) return null;
+    return { t, d };
+  } catch { return null; }
+}
+function writeCache(pid, d) { try { localStorage.setItem(cacheKey(pid), JSON.stringify({ t: Date.now(), d })); } catch {} }
+function clearCache() { try { Object.keys(localStorage).filter(k => k.startsWith("cantera:v1:")).forEach(k => localStorage.removeItem(k)); } catch {} }
+
+/* ─────────────── Carga de datos ─────────────── */
+async function fetchWithTimeout(url, opts = {}) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), CONFIG.timeoutMs);
+  try { return await fetch(url, { ...opts, signal: ctl.signal }); }
+  finally { clearTimeout(timer); }
+}
+
+function sheetUrl() {
+  let u = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv`;
+  if (CONFIG.sheetTab) u += "&sheet=" + encodeURIComponent(CONFIG.sheetTab);
+  return u;
+}
+
+async function tryStatic(bust) {
+  try {
+    const r = await fetchWithTimeout(CONFIG.staticData + (bust ? "?t=" + Date.now() : ""), { cache: "no-store" });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || !Array.isArray(j.rows)) return null;
+    return j;
+  } catch { return null; }
+}
+
+function setStatus(text, progress) {
+  const el = $("#status");
+  el.textContent = text || "";
+  if (progress != null) {
+    const bar = document.createElement("div");
+    bar.className = "progress";
+    bar.innerHTML = `<i style="width:${Math.round(progress * 100)}%"></i>`;
+    el.appendChild(bar);
+  }
+}
+function setNotices(list) {
+  $("#notices").innerHTML = list.map(n =>
+    `<div class="notice${n.error ? " error" : ""}">${n.html}</div>`).join("");
+}
+
+async function pool(items, size, worker, shouldStop) {
+  let i = 0;
+  const run = async () => { while (i < items.length && !shouldStop()) await worker(items[i++]); };
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, run));
+}
+
+let loadId = 0;
+async function load(force) {
+  const myId = ++loadId;
+  setNotices([]);
+  setStatus("Cargando jugadores…");
+
+  // 1) Datos generados de antemano (data/players.json): no dependen de CORS.
+  const st = await tryStatic(force);
+  if (myId !== loadId) return;
+  if (st) {
+    state.players = st.rows.map(r => normalize(r, st.api?.[r.pid]));
+    state.players.forEach((p, i) => { if (!st.api?.[st.rows[i].pid]) p.failed = true; });
+    state.stamp = st.generatedAt ? Date.parse(st.generatedAt) : null;
+    state.source = "archivo";
+    finish();
+    return;
+  }
+
+  // 2) Modo en vivo: hoja de Google + API de Sokker desde el navegador.
+  let rows;
+  try {
+    const r = await fetchWithTimeout(sheetUrl());
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    rows = rowsToPlayers(parseCSV(await r.text()));
+  } catch (e) {
+    setStatus("");
+    setNotices([{ error: true, html:
+      `<p><strong>No pude leer la hoja de Google.</strong> ${esc(e.message)}</p>
+       <p>Comprueba que la hoja esté compartida como «Cualquier persona con el enlace puede ver» y que tenga una columna llamada <code>PID</code>.</p>` }]);
+    return;
+  }
+  if (myId !== loadId) return;
+
+  if (force) clearCache();
+  let oldest = Date.now();
+  const cached = new Map();
+  for (const r of rows) { const c = readCache(r.pid); if (c) { cached.set(r.pid, c.d); oldest = Math.min(oldest, c.t); } }
+  state.players = rows.map(r => normalize(r, cached.get(r.pid)));
+  state.source = "api";
+  state.stamp = oldest;
+  render();
+
+  const todo = rows.filter(r => !cached.has(r.pid));
+  let done = 0, ok = 0, corsLike = false;
+  const total = todo.length;
+  const byPid = new Map(state.players.map(p => [p.pid, p]));
+  if (total) setStatus(`Leyendo la API de Sokker: 0 de ${total}`, 0);
+
+  await pool(todo, CONFIG.concurrency, async r => {
+    try {
+      const resp = await fetchWithTimeout(`${CONFIG.apiBase}/player/${r.pid}`, {
+        headers: { Accept: "application/json" },
+        credentials: state.session ? "include" : "omit"
+      });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      const api = await resp.json();
+      writeCache(r.pid, api);
+      byPid.set(r.pid, Object.assign(byPid.get(r.pid), normalize(r, api)));
+      ok++;
+    } catch (e) {
+      byPid.get(r.pid).failed = true;
+      if (e instanceof TypeError && ok === 0) corsLike = true;
+    }
+    done++;
+    if (myId === loadId) { setStatus(`Leyendo la API de Sokker: ${done} de ${total}`, done / total); if (done % 5 === 0 || done === total) render(); }
+  }, () => corsLike || myId !== loadId);
+
+  if (myId !== loadId) return;
+  state.stamp = state.stamp && cached.size === rows.length ? state.stamp : (total ? Date.now() : state.stamp);
+  const failed = state.players.filter(p => p.failed && !p.loaded).length;
+  const notices = [];
+  if (corsLike) {
+    notices.push({ error: true, html:
+      `<p><strong>El navegador no pudo leer la API de Sokker.</strong> Lo más probable es que Sokker no permita llamadas desde otra página (bloqueo CORS).</p>
+       <p>Solución: genera el archivo <code>data/players.json</code> con <code>node fetch-players.mjs</code> y súbelo al repositorio. La página lo usa sola, sin llamar a la API. Los pasos están en el README.</p>` });
+  } else if (failed) {
+    notices.push({ error: true, html: `<p><strong>${failed} jugadores no se pudieron leer.</strong> Pulsa «Actualizar datos» para reintentar.</p>` });
+  }
+  finish(notices);
+}
+
+function finish(extraNotices = []) {
+  const notices = [...extraNotices];
+  const loaded = state.players.filter(p => p.loaded);
+  if (loaded.length && !loaded.some(p => hasSkills(p.skills))) {
+    notices.push({ html:
+      `<p><strong>Las posiciones no se pueden calcular todavía.</strong> La API de Sokker no entrega las skills de jugadores de otros equipos: solo forma, disciplina táctica, trabajo en equipo y experiencia.${state.session ? " Con tu sesión solo se ven las skills de tus propios jugadores y de los que están en venta." : ""}</p>
+       <p>Si tienes las skills (por ejemplo, de la última transferencia), agrégalas a la hoja en columnas llamadas <code>RES</code>, <code>RAP</code>, <code>TEC</code>, <code>PAS</code>, <code>POR</code>, <code>DEF</code>, <code>CRE</code> y <code>ANO</code>, y esta página calculará las posiciones.</p>` });
+  }
+  setNotices(notices);
+  setStatus("");
+  render();
+}
+
+/* ─────────────── Vista ─────────────── */
+function buildHead() {
+  $("#head").innerHTML = COLS.map(c => {
+    const pos = POSITIONS.find(p => p.key === c.key);
+    const title = pos ? ` title="${esc(pos.label)}: ver «Cómo se calcula cada posición»"` : "";
+    return `<th class="${c.cls || ""}${c.left ? " l" : ""}" data-key="${c.key}" scope="col" aria-sort="none">
+      <button type="button"${title}>${esc(c.label)}</button></th>`;
+  }).join("");
+}
+
+function sortValue(p, key) {
+  if (POSITIONS.some(x => x.key === key)) return p.sc ? p.sc[key] : null;
+  const v = p[key];
+  return v === undefined || v === "" ? null : v;
+}
+
+function visibleRows() {
+  const q = state.q.trim().toLowerCase();
+  const min = state.ageMin === "" ? null : Number(state.ageMin);
+  const max = state.ageMax === "" ? null : Number(state.ageMax);
+  const out = state.players.filter(p => {
+    if (q && !(`${p.name} ${p.team} ${p.pid}`.toLowerCase().includes(q))) return false;
+    if (p.age != null) { if (min != null && p.age < min) return false; if (max != null && p.age > max) return false; }
+    const hs = hasSkills(p.skills);
+    if (state.skills === "visible" && !hs) return false;
+    if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
+    return true;
+  });
+  for (const p of out) {
+    const F = state.withForm && p.form != null ? p.form / 10 - 1 : 0;
+    p.sc = hasSkills(p.skills) ? scores(p.skills, F) : null;
+  }
+  const { key, dir } = state.sort;
+  out.sort((a, b) => {
+    const x = sortValue(a, key), y = sortValue(b, key);
+    if (x == null && y == null) return a.n - b.n;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    const c = typeof x === "string" ? x.localeCompare(y, "es") : x - y;
+    return c ? c * dir : a.n - b.n;
+  });
+  return out;
+}
+
+function cellText(p, key) {
+  switch (key) {
+    case "value": return p.value == null ? "" : nf.format(p.value) + (p.currency ? " " + p.currency : "");
+    case "injury": return p.injury ? `Lesión ${p.injury} d` : (p.loaded ? (p.nt || "") : "");
+    default: {
+      if (POSITIONS.some(x => x.key === key)) return p.sc ? String(Math.round(p.sc[key])) : "";
+      const v = p[key];
+      return v == null ? "" : String(v);
+    }
+  }
+}
+
+/* ─────────────── Sesión en Sokker ─────────────── */
+function updateSessionUI() {
+  const live = state.source !== "archivo";      // con data/players.json no hay llamadas desde el navegador
+  const on = !!state.session;
+  $("#login").hidden = !live || on;
+  $("#logout").hidden = !live || !on;
+  $("#who").hidden = !live || !on;
+  $("#who").textContent = on ? `Conectado como ${state.session.user}` : "";
+}
+
+const apiFetch = (path, opts = {}) => fetchWithTimeout(CONFIG.apiBase + path, {
+  credentials: "include",
+  ...opts,
+  headers: { Accept: "application/json", ...(opts.body ? { "Content-Type": "application/json" } : {}) }
+});
+
+function openLogin() {
+  $("#lgMsg").textContent = "";
+  $("#lgPass").value = "";
+  $("#dlg").showModal();
+  $("#lgUser").focus();
+}
+
+async function submitLogin(ev) {
+  ev.preventDefault();
+  const user = $("#lgUser").value.trim();
+  const pass = $("#lgPass").value;
+  $("#lgPass").value = "";                       // la contraseña no se queda en el formulario
+  const msg = t => { $("#lgMsg").textContent = t; };
+  if (!user || !pass) { msg("Escribe tu usuario y tu contraseña."); return; }
+
+  const ok = $("#lgOk");
+  ok.disabled = true; ok.textContent = "Conectando…"; msg("");
+  try {
+    let resp;
+    try {
+      resp = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ [CONFIG.loginFields.username]: user, [CONFIG.loginFields.password]: pass, ...CONFIG.loginExtra })
+      });
+    } catch {
+      msg("El navegador no pudo comunicarse con Sokker (bloqueo CORS o sin conexión). Usa fetch-players.mjs con tu usuario, como indica el README.");
+      return;
+    }
+    if (resp.status === 400 || resp.status === 401) {
+      msg("Sokker no aceptó los datos. Revisa usuario y contraseña. Si son correctos, los nombres de CONFIG.loginFields pueden no coincidir con LoginRequest.");
+      return;
+    }
+    if (!resp.ok && resp.status !== 403) { msg(`Sokker respondió con el error ${resp.status}. Prueba de nuevo en un rato.`); return; }
+
+    // 403 significa que ya había una sesión; en ambos casos se comprueba que el navegador la conserve.
+    let me;
+    try { me = await apiFetch("/current"); } catch { me = null; }
+    if (!me || !me.ok) {
+      msg("Sokker aceptó el login, pero el navegador no conservó la sesión (cookies de terceros bloqueadas). Usa fetch-players.mjs con tu usuario, como indica el README.");
+      return;
+    }
+    state.session = { user };
+    $("#dlg").close();
+    clearCache();
+    load(true);
+  } finally {
+    ok.disabled = false; ok.textContent = "Conectar";
+  }
+}
+
+async function logout() {
+  try { await apiFetch("/auth/logout", { method: "POST" }); } catch {}
+  state.session = null;
+  clearCache();
+  load(true);
+}
+
+function render() {
+  updateSessionUI();
+  const rows = visibleRows();
+  const maxBy = {};
+  for (const pos of POSITIONS) maxBy[pos.key] = Math.max(0, ...rows.map(p => p.sc ? p.sc[pos.key] : 0));
+
+  $("#body").innerHTML = rows.length ? rows.map(p => {
+    const tds = COLS.map(c => {
+      if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><span class="pid">${esc(p.pid)}</span></td>`;
+      if (c.key === "injury") {
+        if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
+        return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
+      }
+      if (c.pos) {
+        if (!p.sc) return `<td class="pos dim">—</td>`;
+        const w = maxBy[c.key] > 0 ? Math.max(0, p.sc[c.key]) / maxBy[c.key] * 100 : 0;
+        return `<td class="pos" style="--w:${w.toFixed(1)}%">${Math.round(p.sc[c.key])}</td>`;
+      }
+      if (!p.loaded) return `<td class="${c.left ? "l " : ""}dim">${p.failed ? "—" : "…"}</td>`;
+      const t = cellText(p, c.key);
+      return `<td class="${c.left ? "l" : ""}">${t === "" ? '<span class="dim">—</span>' : esc(t)}</td>`;
+    }).join("");
+    return `<tr>${tds}</tr>`;
+  }).join("") : `<tr><td class="empty" colspan="${COLS.length}">Ningún jugador coincide con los filtros. Borra la búsqueda o amplía el rango de edad.</td></tr>`;
+
+  document.querySelectorAll("#head th").forEach(th => {
+    th.setAttribute("aria-sort", th.dataset.key === state.sort.key ? (state.sort.dir === 1 ? "ascending" : "descending") : "none");
+  });
+
+  const total = state.players.length;
+  const when = state.stamp ? fmtDate(state.stamp) : "";
+  const stamp = when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "";
+  $("#lede").innerHTML = total
+    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}`
+    : "No hay jugadores para mostrar.";
+}
+
+async function copyTable() {
+  const rows = visibleRows();
+  const head = COLS.map(c => c.label === "#" ? "N" : c.label);
+  const lines = [head.join("\t")];
+  for (const p of rows) {
+    lines.push(COLS.map(c => {
+      if (c.key === "n") return p.n;
+      if (c.key === "name") return p.name || p.pid;
+      return cellText(p, c.key).replace(/\t|\n/g, " ");
+    }).join("\t"));
+  }
+  const text = lines.join("\n");
+  const btn = $("#copy");
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  const old = btn.textContent;
+  btn.textContent = `Copiadas ${rows.length} filas`;
+  setTimeout(() => { btn.textContent = old; }, 1800);
+}
+
+/* ─────────────── Eventos ─────────────── */
+function init() {
+  document.title = CONFIG.title;
+  $("#title").firstChild.textContent = CONFIG.title;
+  buildHead();
+  $("#head").addEventListener("click", e => {
+    const th = e.target.closest("th"); if (!th) return;
+    const key = th.dataset.key;
+    const textual = key === "name" || key === "team";
+    state.sort = state.sort.key === key
+      ? { key, dir: -state.sort.dir }
+      : { key, dir: textual || key === "n" ? 1 : -1 };
+    render();
+  });
+  $("#q").addEventListener("input", e => { state.q = e.target.value; render(); });
+  $("#ageMin").addEventListener("input", e => { state.ageMin = e.target.value; render(); });
+  $("#ageMax").addEventListener("input", e => { state.ageMax = e.target.value; render(); });
+  $("#skillsFilter").addEventListener("change", e => { state.skills = e.target.value; render(); });
+  $("#withForm").addEventListener("change", e => { state.withForm = e.target.checked; render(); });
+  $("#copy").addEventListener("click", copyTable);
+  $("#reload").addEventListener("click", () => load(true));
+  $("#login").addEventListener("click", openLogin);
+  $("#logout").addEventListener("click", logout);
+  $("#lgForm").addEventListener("submit", submitLogin);
+  $("#lgCancel").addEventListener("click", () => { $("#lgPass").value = ""; $("#dlg").close(); });
+  render();
+  load(false);
+}
+init();
+</script>
+</body>
+</html>

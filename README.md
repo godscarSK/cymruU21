@@ -1,1 +1,45 @@
-# cymru
+# Cantera
+
+Tabla de jugadores con buscador, filtros, orden por columna y cálculo de posiciones. Es una página estática: un solo `index.html`.
+
+## De dónde salen los datos
+
+- **La lista de jugadores** sale de una hoja de Google Sheets (columna `PID`). Debe estar compartida como «Cualquier persona con el enlace puede ver».
+- **Los datos de cada jugador** salen de la API de Sokker (`/api/player/{PID}`): nombre, edad, equipo, valor, forma, disciplina táctica, trabajo en equipo, experiencia y lesión.
+- **Las skills** (resistencia, rapidez, técnica, pase, portero, defensa, creación, anotación) la API no las entrega para jugadores de otros equipos. Si las agregas a la hoja en columnas llamadas `RES`, `RAP`, `TEC`, `PAS`, `POR`, `DEF`, `CRE` y `ANO`, la página calcula las posiciones.
+
+## Publicar en GitHub Pages
+
+1. Crea un repositorio en GitHub y sube `index.html` (y, si lo generas, la carpeta `data/`).
+2. En el repositorio: Settings → Pages → «Deploy from a branch» → rama `main`, carpeta `/ (root)`.
+3. En uno o dos minutos la página queda en `https://TU_USUARIO.github.io/NOMBRE_DEL_REPO/`.
+
+## Si el navegador no puede leer la API de Sokker
+
+Si la página muestra «El navegador no pudo leer la API de Sokker», es un bloqueo CORS. Se resuelve generando los datos fuera del navegador:
+
+1. Instala Node 18 o superior.
+2. En esta carpeta, ejecuta `node fetch-players.mjs`. Crea `data/players.json`.
+3. Sube `data/players.json` al repositorio.
+
+Mientras exista ese archivo, la página lo usa y no llama a la API. Para actualizarlo, repite los pasos 2 y 3.
+
+## Conectar con tu usuario de Sokker
+
+El botón «Conectar a Sokker» abre un cuadro para escribir tu usuario y tu contraseña. Se envían directo a `sokker.org`; la página no los guarda. Con la sesión iniciada, la API entrega las skills de tus propios jugadores y de los que están en venta (no las de otros equipos).
+
+Dos cosas pueden impedirlo:
+
+- Los campos del login están en `CONFIG.loginFields` (`login` y `password`) y `CONFIG.loginExtra` (`remember: false`, es decir, no recordar la sesión). Deben coincidir con `LoginRequest` en https://sokker.org/apidoc.html, sección Schemas. Si Sokker responde que no acepta los datos, revísalos ahí.
+- Los navegadores suelen bloquear las cookies de otro sitio. Si Sokker acepta el login pero la página no mantiene la sesión, usa el script.
+
+**Con el script** (no depende del navegador). Con tu usuario y contraseña en variables de entorno, solo para esa ejecución:
+
+- Windows (PowerShell): `$env:SOKKER_USER="tu_usuario"; $env:SOKKER_PASS="tu_contraseña"; node fetch-players.mjs`
+- Mac o Linux: `SOKKER_USER="tu_usuario" SOKKER_PASS="tu_contraseña" node fetch-players.mjs`
+
+El `data/players.json` que genera incluye lo que tu sesión puede ver. Si lo subes a un repositorio público, esos datos quedan públicos. Nunca subas tu contraseña.
+
+## Configuración
+
+Todo está al inicio del `<script>` de `index.html`, en `CONFIG`: título, ID de la hoja, nombre de la pestaña, tiempo de caché y concurrencia. El script `fetch-players.mjs` tiene su propio `SHEET_ID` al inicio.
