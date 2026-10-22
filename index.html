@@ -17,7 +17,7 @@
   --line: #cfd8d2;
   --accent: #c8352f;
   --accent-ink: #ffffff;
-  --bar: #cfe3d6;
+  --bar: #5b9a74;
   --notice-bg: #fff3d6;
   --notice-line: #d9b240;
   --error-bg: #fde8e6;
@@ -34,7 +34,7 @@
     --line: #2a3b47;
     --accent: #ef6a62;
     --accent-ink: #1a0b0a;
-    --bar: #1f4130;
+    --bar: #4f9d73;
     --notice-bg: #3a3118;
     --notice-line: #8a7326;
     --error-bg: #3b1d1b;
@@ -45,7 +45,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0f1a22; --panel: #16232d; --ink: #e6edf1; --muted: #93a4b0; --line: #2a3b47;
-  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #1f4130; --notice-bg: #3a3118;
+  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --notice-bg: #3a3118;
   --notice-line: #8a7326; --error-bg: #3b1d1b; --error-line: #ef6a62; --head-bg: #1d2e3a; --focus: #6aaeff;
 }
 
@@ -131,26 +131,31 @@ th.l button, td.l { justify-content: flex-start; text-align: left; }
 th[aria-sort="ascending"] button::after { content: "▲"; font-size: .65em; color: var(--accent); }
 th[aria-sort="descending"] button::after { content: "▼"; font-size: .65em; color: var(--accent); }
 td.l { text-align: left; }
-tbody tr:hover td { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+tbody tr:hover td { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
 th.c-n, td.c-n { position: sticky; left: 0; width: 3.2rem; min-width: 3.2rem; color: var(--muted); z-index: 1; background: var(--panel); }
 th.c-n { z-index: 3; background: var(--head-bg); }
 th.c-name, td.c-name { position: sticky; left: 3.2rem; z-index: 1; background: var(--panel); border-right: 1px solid var(--line); }
 th.c-name { z-index: 3; background: var(--head-bg); }
-tbody tr:hover td.c-n, tbody tr:hover td.c-name { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+tbody tr:hover td.c-n, tbody tr:hover td.c-name { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
 td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
 td.c-name a:hover { text-decoration-color: var(--accent); }
+td.c-name .bot { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 td.c-name .pid { margin-left: 8px; color: var(--muted); font-size: .8rem; }
 
 td.pos {
   min-width: 4.2rem;
-  background-image: linear-gradient(to right, var(--bar) var(--w, 0%), transparent var(--w, 0%));
+  background-image: linear-gradient(var(--bar), var(--bar));
+  background-size: var(--w, 0%) 3px;
+  background-position: left bottom;
   background-repeat: no-repeat;
 }
 td.sk {
   min-width: 3rem;
-  background-image: linear-gradient(to right, var(--bar) var(--w, 0%), transparent var(--w, 0%));
+  background-image: linear-gradient(var(--bar), var(--bar));
+  background-size: var(--w, 0%) 3px;
+  background-position: left bottom;
   background-repeat: no-repeat;
 }
 [hidden] { display: none !important; }
@@ -341,8 +346,8 @@ const SKILL_COLUMNS = [
   { skill: "technique", label: "Téc.", title: "Technique" },
   { skill: "passing",   label: "Pas.", title: "Passing" },
   { skill: "keeper",    label: "Por.", title: "Keeper" },
-  { skill: "playmaker", label: "Cre.", title: "Playmaking" },
   { skill: "defender",  label: "Def.", title: "Defending" },
+  { skill: "playmaker", label: "Cre.", title: "Playmaking" },
   { skill: "striker",   label: "Ano.", title: "Striker" }
 ];
 // Columnas calculadas: suma simple de niveles de skills, sin ajustar por forma.
@@ -502,7 +507,7 @@ function normalize(row, api) {
   const p = {
     n: row.n, name: row.name, pid: row.pid,
     link: "https://sokker.org/player/PID/" + row.pid,
-    loaded: false, failed: false, age: null, team: "", value: null, currency: "",
+    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, value: null, currency: "",
     form: null, disc: null, teamwork: null, exp: null, injury: 0, nt: "", skills: null
   };
   const i = api && api.info;
@@ -511,6 +516,8 @@ function normalize(row, api) {
     p.name = i.name?.full || row.name;
     p.age = num(i.characteristics?.age);
     p.team = i.team?.name || "";
+    p.teamId = i.team?.id ?? null;
+    for (const k of ["bot", "isBot"]) if (typeof i.team?.[k] === "boolean") p.teamBot = i.team[k];
     p.value = num(i.value?.value);
     p.currency = i.value?.currency || "";
     const s = i.skills || {};
@@ -527,6 +534,19 @@ function normalize(row, api) {
 }
 
 /* ─────────────── Estado ─────────────── */
+const TEAM_BOT = new Map();   // teamId → true (sin dueño) / false
+const isBot = p => p.teamBot === true || (p.teamId != null && TEAM_BOT.get(String(p.teamId)) === true);
+async function checkOwners(ids, fetchOwner, shouldStop) {
+  // GET /team/{id}/owner responde 404 («User not found») cuando el equipo no tiene dueño.
+  let next = 0;
+  const run = async () => {
+    while (next < ids.length && !shouldStop()) {
+      const id = ids[next++];
+      try { const st = await fetchOwner(id); if (st === 404) TEAM_BOT.set(String(id), true); else if (st >= 200 && st < 300) TEAM_BOT.set(String(id), false); } catch {}
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, run));
+}
 const state = {
   players: [], q: "", ageMin: "", ageMax: "", skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
@@ -607,6 +627,7 @@ async function load(force) {
   const st = await tryStatic(force);
   if (myId !== loadId) return;
   if (st) {
+    for (const [id, v] of Object.entries(st.teams || {})) TEAM_BOT.set(String(id), !!v.bot);
     state.players = st.rows.map(r => normalize(r, st.api?.[r.pid]));
     state.players.forEach((p, i) => { if (!st.api?.[st.rows[i].pid]) p.failed = true; });
     state.stamp = st.generatedAt ? Date.parse(st.generatedAt) : null;
@@ -665,6 +686,17 @@ async function load(force) {
   }, () => corsLike || myId !== loadId);
 
   if (myId !== loadId) return;
+  if (!corsLike) {
+    const ids = [...new Set(state.players.map(p => p.teamId).filter(x => x != null))];
+    await checkOwners(ids, async id => {
+      const k = "cantera:owner:" + id;
+      try { const c = JSON.parse(localStorage.getItem(k)); if (c && Date.now() - c.t < CONFIG.cacheHours * 3600e3) return c.s; } catch {}
+      const r = await fetchWithTimeout(`${CONFIG.apiBase}/team/${id}/owner`, { headers: { Accept: "application/json" }, credentials: state.session ? "include" : "omit" });
+      try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), s: r.status })); } catch {}
+      return r.status;
+    }, () => myId !== loadId);
+    if (myId !== loadId) return;
+  }
   state.stamp = state.stamp && cached.size === rows.length ? state.stamp : (total ? Date.now() : state.stamp);
   const failed = state.players.filter(p => p.failed && !p.loaded).length;
   const notices = [];
@@ -842,7 +874,7 @@ function render() {
   $("#body").innerHTML = rows.length ? rows.map(p => {
     const tds = COLS.map(c => {
       if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><span class="pid">${esc(p.pid)}</span></td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><span class="pid">${esc(p.pid)}</span>${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Equipo bot</span>` : ""}</td>`;
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;

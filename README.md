@@ -49,3 +49,7 @@ Todo está al inicio del `<script>` de `index.html`, en `CONFIG`: título, ID de
 - Después de las 8 skills hay 5 columnas de suma: **DEF** (defensa + rapidez), **DEFside** (creación + técnica + pase), **MID** (creación + rapidez + técnica + pase), **ATT** (rapidez + técnica + anotación) y **ATTside** (defensa + creación + pase). Si falta alguna skill del jugador, muestran "—".
 - El botón redondo de la esquina superior derecha cambia entre modo claro y oscuro y recuerda tu elección. Si nunca lo usas, sigue el modo de tu sistema.
 - Las columnas "Equipo" y las 7 de posiciones (Portero… Delantero) están ocultas. Para verlas, agrega al final de la dirección `?equipo=1` y/o `?posiciones=1` (por ejemplo `.../index.html?equipo=1&posiciones=1`).
+
+## Equipos bot
+
+Junto al nombre del jugador aparece "Equipo bot" cuando su equipo no tiene dueño. Se detecta con `GET /team/{id}/owner` (404 = sin dueño). `node fetch-players.mjs` lo guarda en `data/players.json` (clave `teams`), así que hay que volver a ejecutarlo para que aparezcan las etiquetas.

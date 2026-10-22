@@ -99,7 +99,12 @@ if (process.env.SOKKER_USER && process.env.SOKKER_PASS) {
   }
   cookie = r.headers.getSetCookie().map(c => c.split(";")[0]).join("; ");
   if (!cookie) console.warn("Login aceptado, pero Sokker no envió cookie de sesión: se seguirá sin sesión.");
-  else console.log("Sesión iniciada en Sokker.");
+  else {
+    const me = await fetch(`${API_BASE}/current`, { headers: { Accept: "application/json", Cookie: cookie } });
+    console.log(me.ok
+      ? "Sesión iniciada y verificada en Sokker (/current responde 200)."
+      : `Advertencia: el login fue aceptado pero /current respondió ${me.status}; la sesión no se está aplicando.`);
+  }
 }
 
 const api = {};
@@ -124,6 +129,31 @@ async function worker() {
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
+// Equipos sin dueño («bot»): GET /team/{id}/owner responde 404 cuando no hay dueño.
+const teams = {};
+const teamIds = [...new Set(Object.values(api).map(a => a?.info?.team?.id).filter(x => x != null))];
+console.log(`Revisando el dueño de ${teamIds.length} equipos…`);
+let tn = 0;
+await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+  while (tn < teamIds.length) {
+    const id = teamIds[tn++];
+    try {
+      const r = await fetch(`${API_BASE}/team/${id}/owner`, { headers: { Accept: "application/json", ...(cookie ? { Cookie: cookie } : {}) } });
+      if (r.status === 404) teams[id] = { bot: true };
+      else if (r.ok) teams[id] = { bot: false };
+      else console.warn(`  Equipo ${id}: HTTP ${r.status}`);
+    } catch (e) { console.warn(`  Equipo ${id}: ${e.message}`); }
+    await sleep(DELAY_MS);
+  }
+}));
+console.log(`Equipos bot: ${Object.values(teams).filter(t => t.bot).length} de ${teamIds.length}.`);
+
 await mkdir("data", { recursive: true });
-await writeFile("data/players.json", JSON.stringify({ generatedAt: new Date().toISOString(), rows, api }));
+await writeFile("data/players.json", JSON.stringify({ generatedAt: new Date().toISOString(), rows, api, teams }));
 console.log(`Listo: data/players.json (${rows.length - failed} jugadores con datos, ${failed} con error).`);
+
+// Diagnóstico: la API siempre entrega estas 4 skills; las demás solo para jugadores propios o en venta.
+const PUBLIC_SKILLS = new Set(["form", "tacticalDiscipline", "teamwork", "experience"]);
+const withSkills = Object.values(api).filter(a => Object.keys(a?.info?.skills || {}).some(k => !PUBLIC_SKILLS.has(k)));
+console.log(`Jugadores con skills completas en la respuesta de la API: ${withSkills.length} de ${Object.keys(api).length}.`);
+if (!withSkills.length) console.log("Ninguno. Es lo esperado si ningún PID de la hoja es de tu equipo ni está en venta.");
