@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cantera</title>
+<title>CYMRU U21</title>
 <script>try { var t = localStorage.getItem("cantera:theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,7 +86,13 @@ h1 .mark { color: var(--accent); }
   border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; min-height: 38px;
 }
 .field input[type="search"] { width: min(260px, 100%); }
-.field input[type="number"] { width: 5.5rem; }
+.ages { display: flex; gap: 6px; flex-wrap: wrap; }
+.ages button {
+  font: inherit; min-width: 2.6rem; min-height: 40px; padding: 0 10px; cursor: pointer; border-radius: 4px;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--panel); font-weight: 600;
+}
+.ages button[aria-pressed="false"] { background: transparent; color: var(--muted); border-color: var(--line); font-weight: 400; text-decoration: line-through; }
+.ages button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .range { display: flex; gap: 6px; align-items: center; }
 .check { display: flex; gap: 8px; align-items: center; min-height: 38px; color: var(--ink); font-size: 0.95rem; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -199,7 +205,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 <div class="wrap">
   <button class="theme" id="theme" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"></button>
   <header class="top">
-    <h1 id="title">Cantera<span class="mark">.</span></h1>
+    <h1 id="title">CYMRU U21</h1>
     <p class="lede" id="lede">Cargando jugadores…</p>
   </header>
 
@@ -209,11 +215,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     </label>
     <div class="field" role="group" aria-label="Edad">
       Edad
-      <span class="range">
-        <input type="number" id="ageMin" min="0" max="99" placeholder="mín" aria-label="Edad mínima">
-        <span aria-hidden="true">a</span>
-        <input type="number" id="ageMax" min="0" max="99" placeholder="máx" aria-label="Edad máxima">
-      </span>
+      <span class="ages" id="ages"></span>
     </div>
     <label class="field">Skills
       <select id="skillsFilter">
@@ -300,7 +302,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 /* ─────────────── Configuración: lo único que normalmente hay que tocar ─────────────── */
 const CONFIG = {
-  title: "Cantera",
+  title: "CYMRU U21",
   sheetId: "1kBi5kAlC7dlmQ3jPi5D1SbtIkNME8KI5SxIG0XRIMWE",
   sheetTab: "",                       // nombre de la pestaña; vacío = la primera
   apiBase: "https://sokker.org/api",
@@ -537,8 +539,9 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
   };
   await Promise.all(Array.from({ length: 4 }, run));
 }
+const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], q: "", ageMin: "", ageMax: "", skills: "all", withForm: false,
+  players: [], q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -740,11 +743,9 @@ function sortValue(p, key) {
 
 function visibleRows() {
   const q = state.q.trim().toLowerCase();
-  const min = state.ageMin === "" ? null : Number(state.ageMin);
-  const max = state.ageMax === "" ? null : Number(state.ageMax);
   const out = state.players.filter(p => {
     if (q && !(`${p.name} ${CONFIG.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
-    if (p.age != null) { if (min != null && p.age < min) return false; if (max != null && p.age > max) return false; }
+    if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
     const hs = hasSkills(p.skills);
     if (state.skills === "visible" && !hs) return false;
     if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
@@ -976,8 +977,14 @@ function init() {
     render();
   });
   $("#q").addEventListener("input", e => { state.q = e.target.value; render(); });
-  $("#ageMin").addEventListener("input", e => { state.ageMin = e.target.value; render(); });
-  $("#ageMax").addEventListener("input", e => { state.ageMax = e.target.value; render(); });
+  $("#ages").innerHTML = AGES.map(a => `<button type="button" data-age="${a}" aria-pressed="true" title="Mostrar u ocultar a los jugadores de ${a} años">${a}</button>`).join("");
+  $("#ages").addEventListener("click", e => {
+    const b = e.target.closest("button[data-age]"); if (!b) return;
+    const a = Number(b.dataset.age);
+    if (state.ages.has(a)) state.ages.delete(a); else state.ages.add(a);
+    b.setAttribute("aria-pressed", String(state.ages.has(a)));
+    render();
+  });
   $("#skillsFilter").addEventListener("change", e => { state.skills = e.target.value; render(); });
   $("#withForm").addEventListener("change", e => { state.withForm = e.target.checked; render(); });
   $("#copy").addEventListener("click", copyTable);
