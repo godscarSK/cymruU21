@@ -147,6 +147,11 @@ td.pos {
   background-image: linear-gradient(to right, var(--bar) var(--w, 0%), transparent var(--w, 0%));
   background-repeat: no-repeat;
 }
+td.sk {
+  min-width: 3.4rem;
+  background-image: linear-gradient(to right, var(--bar) var(--w, 0%), transparent var(--w, 0%));
+  background-repeat: no-repeat;
+}
 .dim { color: var(--muted); }
 .tag {
   display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: .8rem;
@@ -298,6 +303,18 @@ const POSITIONS = [
   { key: "mprom", label: "M.Prom",    weight: 16 },
   { key: "att",   label: "Delantero", weight: 3 }
 ];
+// Skills de cada jugador, en el orden en que se muestran. «skill» es la clave interna (ver SKILL_ALIASES).
+const MAX_SKILL = 17;   // nivel máximo de una skill, para el largo de la barra
+const SKILL_COLUMNS = [
+  { skill: "stamina",   label: "Res.", title: "Stamina" },
+  { skill: "pace",      label: "Rap.", title: "Pace" },
+  { skill: "technique", label: "Téc.", title: "Technique" },
+  { skill: "passing",   label: "Pas.", title: "Passing" },
+  { skill: "keeper",    label: "Por.", title: "Keeper" },
+  { skill: "playmaker", label: "Cre.", title: "Playmaking" },
+  { skill: "defender",  label: "Def.", title: "Defending" },
+  { skill: "striker",   label: "Ano.", title: "Striker" }
+];
 const COLS = [
   { key: "n",        label: "#",                 cls: "c-n", left: true },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
@@ -309,6 +326,7 @@ const COLS = [
   { key: "teamwork", label: "Trabajo en equipo" },
   { key: "exp",      label: "Exp." },
   { key: "injury",   label: "Estado",            left: true },
+  ...SKILL_COLUMNS.map(s => ({ key: "sk_" + s.skill, label: s.label, title: s.title, skill: s.skill })),
   ...POSITIONS.map(p => ({ key: p.key, label: p.label, pos: true }))
 ];
 
@@ -598,7 +616,8 @@ function finish(extraNotices = []) {
 function buildHead() {
   $("#head").innerHTML = COLS.map(c => {
     const pos = POSITIONS.find(p => p.key === c.key);
-    const title = pos ? ` title="${esc(pos.label)}: ver «Cómo se calcula cada posición»"` : "";
+    const title = c.title ? ` title="${esc(c.title)}"`
+      : pos ? ` title="${esc(pos.label)}: ver «Cómo se calcula cada posición»"` : "";
     return `<th class="${c.cls || ""}${c.left ? " l" : ""}" data-key="${c.key}" scope="col" aria-sort="none">
       <button type="button"${title}>${esc(c.label)}</button></th>`;
   }).join("");
@@ -606,6 +625,7 @@ function buildHead() {
 
 function sortValue(p, key) {
   if (POSITIONS.some(x => x.key === key)) return p.sc ? p.sc[key] : null;
+  if (key.startsWith("sk_")) { const s = p.skills?.[key.slice(3)]; return Number.isFinite(s) ? s : null; }
   const v = p[key];
   return v === undefined || v === "" ? null : v;
 }
@@ -644,6 +664,7 @@ function cellText(p, key) {
     case "injury": return p.injury ? `Lesión ${p.injury} d` : (p.loaded ? (p.nt || "") : "");
     default: {
       if (POSITIONS.some(x => x.key === key)) return p.sc ? String(Math.round(p.sc[key])) : "";
+      if (key.startsWith("sk_")) { const s = p.skills?.[key.slice(3)]; return Number.isFinite(s) ? String(s) : ""; }
       const v = p[key];
       return v == null ? "" : String(v);
     }
@@ -737,6 +758,11 @@ function render() {
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
+      }
+      if (c.skill) {
+        const v = p.skills?.[c.skill];
+        if (!Number.isFinite(v)) return `<td class="sk dim">${!p.loaded && !p.failed ? "…" : "—"}</td>`;
+        return `<td class="sk" style="--w:${Math.min(100, Math.max(0, v / MAX_SKILL * 100)).toFixed(1)}%">${v}</td>`;
       }
       if (c.pos) {
         if (!p.sc) return `<td class="pos dim">—</td>`;
