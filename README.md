@@ -43,3 +43,9 @@ El `data/players.json` que genera incluye lo que tu sesión puede ver. Si lo sub
 ## Configuración
 
 Todo está al inicio del `<script>` de `index.html`, en `CONFIG`: título, ID de la hoja, nombre de la pestaña, tiempo de caché y concurrencia. El script `fetch-players.mjs` tiene su propio `SHEET_ID` al inicio.
+
+## Columnas y botón de tema
+
+- Después de las 8 skills hay 5 columnas de suma: **DEF** (defensa + rapidez), **DEFside** (creación + técnica + pase), **MID** (creación + rapidez + técnica + pase), **ATT** (rapidez + técnica + anotación) y **ATTside** (defensa + creación + pase). Si falta alguna skill del jugador, muestran "—".
+- El botón redondo de la esquina superior derecha cambia entre modo claro y oscuro y recuerda tu elección. Si nunca lo usas, sigue el modo de tu sistema.
+- Las columnas "Equipo" y las 7 de posiciones (Portero… Delantero) están ocultas. Para verlas, agrega al final de la dirección `?equipo=1` y/o `?posiciones=1` (por ejemplo `.../index.html?equipo=1&posiciones=1`).
