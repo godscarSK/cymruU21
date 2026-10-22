@@ -1,0 +1,1 @@
+$env:SOKKER_USER='su_usuario'; $env:SOKKER_PASS='su_contraseña'; node fetch-players.mjs
