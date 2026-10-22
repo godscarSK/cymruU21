@@ -695,7 +695,8 @@ async function submitLogin(ev) {
       return;
     }
     if (resp.status === 400 || resp.status === 401) {
-      msg("Sokker no aceptó los datos. Revisa usuario y contraseña. Si son correctos, los nombres de CONFIG.loginFields pueden no coincidir con LoginRequest.");
+      const detail = (await resp.text().catch(() => "")).slice(0, 200).trim();
+      msg(`Sokker no aceptó los datos${detail ? ` (${detail})` : ""}. Revisa usuario y contraseña. Si son correctos, CONFIG.loginFields o CONFIG.loginExtra pueden no coincidir con LoginRequest.`);
       return;
     }
     if (!resp.ok && resp.status !== 403) { msg(`Sokker respondió con el error ${resp.status}. Prueba de nuevo en un rato.`); return; }

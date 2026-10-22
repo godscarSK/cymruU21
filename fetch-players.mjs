@@ -93,7 +93,10 @@ if (process.env.SOKKER_USER && process.env.SOKKER_PASS) {
       ...LOGIN_EXTRA
     })
   });
-  if (!r.ok) throw new Error(`Sokker no aceptó el login (HTTP ${r.status}). Revisa usuario, contraseña y LOGIN_FIELDS.`);
+  if (!r.ok) {
+    const detail = (await r.text()).slice(0, 300).trim();
+    throw new Error(`Sokker no aceptó el login (HTTP ${r.status}). Revisa usuario, contraseña, LOGIN_FIELDS y LOGIN_EXTRA.\nRespuesta de Sokker: ${detail || "(vacía)"}`);
+  }
   cookie = r.headers.getSetCookie().map(c => c.split(";")[0]).join("; ");
   if (!cookie) console.warn("Login aceptado, pero Sokker no envió cookie de sesión: se seguirá sin sesión.");
   else console.log("Sesión iniciada en Sokker.");
