@@ -349,7 +349,12 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = v => {
   if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (v && typeof v === "object") { const x = v.value ?? v.level; if (typeof x === "number" && Number.isFinite(x)) return x; }
+  if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Number(v);
+  if (v && typeof v === "object") {
+    for (const k of ["value", "level", "current", "now", "skill", "points"]) {
+      const x = v[k]; if (typeof x === "number" && Number.isFinite(x)) return x;
+    }
+  }
   return null;
 };
 const nf = new Intl.NumberFormat("es-CL");
@@ -426,6 +431,27 @@ function scores(sk, F) {
   return { gk, def, lat: (def + mdef) / 2, mdef, mof, mprom: (mdef + mof) / 2, att: g("striker") + g("pace") + g("technique") };
 }
 
+// Busca el objeto que contiene los niveles de skills. Normalmente es info.skills, pero si la API
+// los entrega en otro lugar, se elige el objeto que más nombres de skills reconocidos tenga.
+function findSkillsSource(info) {
+  const known = new Set(Object.values(SKILL_ALIASES).flat());
+  const score = o => (o && typeof o === "object" && !Array.isArray(o))
+    ? Object.keys(o).filter(k => known.has(k.toLowerCase())).length : 0;
+  let best = info.skills || {}, bestScore = score(best);
+  const queue = [info];
+  for (let guard = 0; queue.length && guard < 300; guard++) {
+    const o = queue.shift();
+    for (const v of Object.values(o)) {
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        const sc = score(v);
+        if (sc > bestScore) { best = v; bestScore = sc; }
+        queue.push(v);
+      }
+    }
+  }
+  return bestScore >= 3 ? best : (info.skills || {});
+}
+
 function normalize(row, api) {
   const p = {
     n: row.n, name: row.name, pid: row.pid,
@@ -445,7 +471,9 @@ function normalize(row, api) {
     p.form = num(s.form); p.disc = num(s.tacticalDiscipline); p.teamwork = num(s.teamwork); p.exp = num(s.experience);
     p.injury = num(i.injury?.daysRemaining) > 0 ? i.injury.daysRemaining : 0;
     p.nt = i.nationalType || "";
-    p.skills = pickSkills(s, row.skills);
+    const src = findSkillsSource(i);
+    p.skillKeys = Object.keys(src);
+    p.skills = pickSkills(src, row.skills);
   } else if (Object.keys(row.skills || {}).length) {
     p.skills = pickSkills({}, row.skills);
   }
@@ -508,6 +536,11 @@ function setStatus(text, progress) {
   }
 }
 function setNotices(list) {
+  if (location.protocol === "file:") {
+    list = [{ error: true, html:
+      `<p><strong>La página está abierta como archivo local.</strong> El navegador bloquea la lectura de <code>data/players.json</code> desde un archivo, y por eso no se ven los datos.</p>
+       <p>Publícala en GitHub Pages, o ábrela con un servidor local: en esta carpeta ejecuta <code>python -m http.server</code> y entra a <code>http://localhost:8000</code>.</p>` }, ...list];
+  }
   $("#notices").innerHTML = list.map(n =>
     `<div class="notice${n.error ? " error" : ""}">${n.html}</div>`).join("");
 }
@@ -602,7 +635,13 @@ async function load(force) {
 function finish(extraNotices = []) {
   const notices = [...extraNotices];
   const loaded = state.players.filter(p => p.loaded);
-  if (loaded.length && !loaded.some(p => hasSkills(p.skills))) {
+  const anySkill = loaded.some(p => SKILL_KEYS.some(k => Number.isFinite(p.skills?.[k])));
+  if (loaded.length && !anySkill && state.source === "archivo") {
+    const seen = loaded.find(p => p.skillKeys)?.skillKeys || [];
+    notices.push({ html:
+      `<p><strong>En <code>data/players.json</code> no encontré skills que la página reconozca.</strong> Las claves que veo en el primer jugador son: <code>${esc(seen.join(", ") || "ninguna")}</code>.</p>
+       <p>Si tus skills tienen otros nombres, agrégalos en <code>SKILL_ALIASES</code> al inicio del script. Si faltan por completo, vuelve a generar el archivo con tu sesión iniciada.</p>` });
+  } else if (loaded.length && !loaded.some(p => hasSkills(p.skills))) {
     notices.push({ html:
       `<p><strong>Las posiciones no se pueden calcular todavía.</strong> La API de Sokker no entrega las skills de jugadores de otros equipos: solo forma, disciplina táctica, trabajo en equipo y experiencia.${state.session ? " Con tu sesión solo se ven las skills de tus propios jugadores y de los que están en venta." : ""}</p>
        <p>Si tienes las skills (por ejemplo, de la última transferencia), agrégalas a la hoja en columnas llamadas <code>RES</code>, <code>RAP</code>, <code>TEC</code>, <code>PAS</code>, <code>POR</code>, <code>DEF</code>, <code>CRE</code> y <code>ANO</code>, y esta página calculará las posiciones.</p>` });
@@ -781,10 +820,11 @@ function render() {
   });
 
   const total = state.players.length;
+  const skillCount = state.players.filter(p => SKILL_KEYS.some(k => Number.isFinite(p.skills?.[k]))).length;
   const when = state.stamp ? fmtDate(state.stamp) : "";
   const stamp = when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "";
   $("#lede").innerHTML = total
-    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}`
+    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}`
     : "No hay jugadores para mostrar.";
 }
 
