@@ -144,20 +144,10 @@ td.c-name a:hover { text-decoration-color: var(--accent); }
 td.c-name .bot { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; font-size: .72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 td.c-name .pid { margin-left: 8px; color: var(--muted); font-size: .8rem; }
 
-td.pos {
-  min-width: 4.2rem;
-  background-image: linear-gradient(var(--bar), var(--bar));
-  background-size: var(--w, 0%) 3px;
-  background-position: left bottom;
-  background-repeat: no-repeat;
-}
-td.sk {
-  min-width: 3rem;
-  background-image: linear-gradient(var(--bar), var(--bar));
-  background-size: var(--w, 0%) 3px;
-  background-position: left bottom;
-  background-repeat: no-repeat;
-}
+td.pos { min-width: 4.2rem; }
+td.sk { min-width: 3rem; }
+td.sk, td.pos, th.ctr { text-align: center; }
+th.ctr button { justify-content: center; }
 [hidden] { display: none !important; }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
@@ -735,7 +725,7 @@ function buildHead() {
     const pos = POSITIONS.find(p => p.key === c.key);
     const title = c.title ? ` title="${esc(c.title)}"`
       : pos ? ` title="${esc(pos.label)}: ver «Cómo se calcula cada posición»"` : "";
-    return `<th class="${c.cls || ""}${c.left ? " l" : ""}" data-key="${c.key}" scope="col" aria-sort="none">
+    return `<th class="${c.cls || ""}${c.left ? " l" : ""}${c.skill || c.comp || c.pos ? " ctr" : ""}" data-key="${c.key}" scope="col" aria-sort="none">
       <button type="button"${title}>${esc(c.label)}</button></th>`;
   }).join("");
 }
@@ -882,18 +872,18 @@ function render() {
       if (c.skill) {
         const v = p.skills?.[c.skill];
         if (!Number.isFinite(v)) return `<td class="sk dim">${!p.loaded && !p.failed ? "…" : "—"}</td>`;
-        return `<td class="sk" style="--w:${Math.min(100, Math.max(0, v / MAX_SKILL * 100)).toFixed(1)}%">${v}</td>`;
+        return `<td class="sk">${v}</td>`;
       }
       if (c.comp) {
         const v = compositeValue(p, c.comp);
         if (v == null) return `<td class="pos dim">${!p.loaded && !p.failed ? "…" : "—"}</td>`;
         const w = maxBy[c.key] > 0 ? v / maxBy[c.key] * 100 : 0;
-        return `<td class="pos" style="--w:${w.toFixed(1)}%">${v}</td>`;
+        return `<td class="pos">${v}</td>`;
       }
       if (c.pos) {
         if (!p.sc) return `<td class="pos dim">—</td>`;
         const w = maxBy[c.key] > 0 ? Math.max(0, p.sc[c.key]) / maxBy[c.key] * 100 : 0;
-        return `<td class="pos" style="--w:${w.toFixed(1)}%">${Math.round(p.sc[c.key])}</td>`;
+        return `<td class="pos">${Math.round(p.sc[c.key])}</td>`;
       }
       if (!p.loaded) return `<td class="${c.left ? "l " : ""}dim">${p.failed ? "—" : "…"}</td>`;
       const t = cellText(p, c.key);
