@@ -19,6 +19,8 @@
   --accent-ink: #ffffff;
   --bar: #5b9a74;
   --hl: #ffe9a8;
+  --call: #1a5fd0;
+  --call-ink: #ffffff;
   --zebra: #f1f5f3;
   --notice-bg: #fff3d6;
   --notice-line: #d9b240;
@@ -38,6 +40,8 @@
     --accent-ink: #1a0b0a;
     --bar: #4f9d73;
     --hl: #5a4a12;
+    --call: #6aaeff;
+    --call-ink: #0b1a2b;
     --zebra: #1b2b36;
     --notice-bg: #3a3118;
     --notice-line: #8a7326;
@@ -49,7 +53,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0f1a22; --panel: #16232d; --ink: #e6edf1; --muted: #93a4b0; --line: #2a3b47;
-  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --hl: #5a4a12; --zebra: #1b2b36; --notice-bg: #3a3118;
+  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --hl: #5a4a12; --call: #6aaeff; --call-ink: #0b1a2b; --zebra: #1b2b36; --notice-bg: #3a3118;
   --notice-line: #8a7326; --error-bg: #3b1d1b; --error-line: #ef6a62; --head-bg: #1d2e3a; --focus: #6aaeff;
 }
 
@@ -154,6 +158,7 @@ tbody tr:hover td.c-n, tbody tr:hover td.c-name { background-color: color-mix(in
 td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
 td.c-name a:hover { text-decoration-color: var(--accent); }
 td.c-name .bot { margin-left: 8px; padding: 2px 7px; border-radius: 3px; font-size: .72rem; font-weight: 700; background: var(--accent); color: var(--accent-ink); text-transform: uppercase; letter-spacing: .03em; }
+td.c-name .u21 { margin-left: 8px; padding: 2px 7px; border-radius: 3px; font-size: .72rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
 td.c-name .copypid {
   all: unset; box-sizing: border-box; margin-left: 8px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
   vertical-align: middle; cursor: pointer; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
@@ -525,7 +530,7 @@ function normalize(row, api) {
   const p = {
     n: row.n, name: row.name, pid: row.pid,
     link: "https://sokker.org/player/PID/" + row.pid,
-    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, value: null, currency: "",
+    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, callUp: false, value: null, currency: "",
     form: null, disc: null, teamwork: null, exp: null, injury: 0, nt: "", skills: null
   };
   const i = api && api.info;
@@ -535,6 +540,7 @@ function normalize(row, api) {
     p.age = num(i.characteristics?.age);
     p.team = i.team?.name || "";
     p.teamId = i.team?.id ?? null;
+    p.callUp = i.nationalCallUp === true;
     for (const k of ["bot", "isBot"]) if (typeof i.team?.[k] === "boolean") p.teamBot = i.team[k];
     p.value = num(i.value?.value);
     p.currency = i.value?.currency || "";
@@ -903,7 +909,7 @@ function render() {
   $("#body").innerHTML = rows.length ? rows.map(p => {
     const tds = COLS.map(c => {
       if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Equipo bot</span>` : ""}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Equipo bot</span>` : ""}</td>`;
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
