@@ -163,6 +163,10 @@ td.c-name .bot { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-si
 td.c-name .u21 { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
 td.c-name .inj { margin-left: 8px; display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 700; color: var(--inj); white-space: nowrap; vertical-align: middle; }
 td.c-name .inj svg { width: 13px; height: 13px; fill: var(--inj); }
+td.c-name .red { margin-left: 8px; display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 700; color: #d6232a; vertical-align: middle; }
+td.c-name .red i { display: inline-block; width: 9px; height: 13px; border-radius: 1.5px; background: #d6232a; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+:root[data-theme="dark"] td.c-name .red { color: #ff6b63; }
+:root[data-theme="dark"] td.c-name .red i { background: #ff4a41; }
 td.c-name .copypid {
   all: unset; box-sizing: border-box; margin-left: 8px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
   vertical-align: middle; cursor: pointer; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
@@ -266,6 +270,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Mostrar Clubes</button>
     <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
     <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
+    <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
     <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Skills Ocultas</button>
     <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
   </section>
@@ -539,7 +544,7 @@ function normalize(row, api) {
   const p = {
     n: row.n, name: row.name, pid: row.pid,
     link: "https://sokker.org/player/PID/" + row.pid,
-    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, callUp: false, value: null, currency: "",
+    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, callUp: false, red: 0, value: null, currency: "",
     form: null, disc: null, teamwork: null, exp: null, injury: 0, nt: "", skills: null
   };
   const i = api && api.info;
@@ -550,6 +555,7 @@ function normalize(row, api) {
     p.team = i.team?.name || "";
     p.teamId = i.team?.id ?? null;
     p.callUp = i.nationalCallUp === true;
+    p.red = num(i.nationalStats?.cards?.red) || 0;
     for (const k of ["bot", "isBot"]) if (typeof i.team?.[k] === "boolean") p.teamBot = i.team[k];
     p.value = num(i.value?.value);
     p.currency = i.value?.currency || "";
@@ -582,7 +588,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], showTeam: false, onlyBot: false, onlyInjured: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], showTeam: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -800,6 +806,7 @@ function visibleRows() {
     if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
     if (state.onlyBot && !isBot(p)) return false;
     if (state.onlyInjured && !p.injury) return false;
+    if (state.onlySusp && !p.red) return false;
     const hs = hasSkills(p.skills);
     if (state.skills === "visible" && !hs) return false;
     if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
@@ -919,7 +926,7 @@ function render() {
   $("#body").innerHTML = rows.length ? rows.map(p => {
     const tds = COLS.map(c => {
       if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
@@ -1090,6 +1097,11 @@ function init() {
   $("#onlyInjured").addEventListener("click", e => {
     state.onlyInjured = !state.onlyInjured;
     e.currentTarget.setAttribute("aria-pressed", String(state.onlyInjured));
+    render();
+  });
+  $("#onlySusp").addEventListener("click", e => {
+    state.onlySusp = !state.onlySusp;
+    e.currentTarget.setAttribute("aria-pressed", String(state.onlySusp));
     render();
   });
   $("#onlyHidden").addEventListener("click", e => {
