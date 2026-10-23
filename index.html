@@ -387,7 +387,7 @@ const CONFIG = {
   apiBase: "https://sokker.org/api",
   staticData: "data/players.json",
   prevData: "data/players.prev.json",
-  estUrl: "https://script.google.com/macros/s/AKfycbw0UdnUO-UyX48DYVxm8IrcJ9wmpvFku_uGGKhU3selrHGU-5a1LDWhGgPapllUajPc/exec",                                  // dirección de la aplicación web de Apps Script (ver README) para compartir las asignaciones entre dispositivos
+  estUrl: "",                                  // dirección de la aplicación web de Apps Script (ver README) para compartir las asignaciones entre dispositivos
   encData: "data/players.enc.json",            // datos cifrados con la contraseña de la página
   encPrevData: "data/players.prev.enc.json",   // respaldo de la semana anterior (opcional)
   cacheHours: 6,
@@ -900,7 +900,7 @@ function buildHead() {
 const EST_KEY = "cantera:est2", EST_DIRTY_KEY = "cantera:est2dirty";
 const EST_OPTS = ["GK", "DEF", "MID", "ATT"];
 let estMap = {};      // pid → { v, t }   (t = momento del último cambio, en ms)
-const sync = { key: null, token: "", pw: "", dirty: new Set(), busy: false, state: "local" };
+const sync = { detail: "", key: null, token: "", pw: "", dirty: new Set(), busy: false, state: "local" };
 try {
   const o = JSON.parse(localStorage.getItem(EST_KEY));
   if (o && typeof o === "object") estMap = o;
@@ -922,7 +922,17 @@ function setEst(pid, v) {
 const SYNC_TEXT = { local: "", ok: "Asignaciones sincronizadas.", pending: "Sincronizando asignaciones…",
   offline: "Asignaciones pendientes de sincronizar (sin conexión con el servicio).",
   token: "No se pudo sincronizar las asignaciones: el servicio rechazó la clave (ver README)." };
-function setSyncState(st) { sync.state = st; const el = document.getElementById("syncMsg"); if (el) el.textContent = " " + SYNC_TEXT[st]; }
+const syncText = () => (SYNC_TEXT[sync.state] || "") + (sync.detail && (sync.state === "offline" || sync.state === "token") ? " Motivo: " + sync.detail : "");
+function setSyncState(st, detail = "") { sync.state = st; sync.detail = detail; const el = document.getElementById("syncMsg"); if (el) el.textContent = syncText() ? " " + syncText() : ""; }
+// Traduce el error a algo que se pueda corregir.
+function explainSync(err) {
+  const m = String(err && err.message || err);
+  if (err && err.name === "AbortError") return "el servicio tardó más de 15 s en responder (inténtalo de nuevo).";
+  if (err instanceof TypeError) return "el navegador no pudo conectar con el servicio. Revisa que la URL termine en /exec y que la implementación tenga acceso «Cualquier persona».";
+  if (err instanceof SyntaxError) return "el servicio no respondió datos válidos (suele pasar si el acceso no es «Cualquier persona» o la URL no es la de la aplicación web).";
+  if (/^HTTP \d+/.test(m)) return "el servicio respondió " + m + ".";
+  return "el servicio respondió: " + m;
+}
 
 const te = new TextEncoder();
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -970,7 +980,7 @@ async function pushDirty() {
     }
   } catch (err) { failed = err; }
   sync.busy = false;
-  if (failed) { setSyncState(/token/i.test(failed.message) ? "token" : "offline"); return; }
+  if (failed) { setSyncState(/token/i.test(failed.message) ? "token" : "offline", explainSync(failed)); return; }
   if (sync.dirty.size) pushDirty(); else setSyncState("ok");
 }
 async function pullEst() {
@@ -991,7 +1001,7 @@ async function pullEst() {
     saveEst();
     if (changed) render();
     if (sync.dirty.size) await pushDirty(); else setSyncState("ok");
-  } catch { setSyncState("offline"); }
+  } catch (err) { setSyncState("offline", explainSync(err)); }
 }
 let estStarted = "";
 async function estStart(pw) {
@@ -1229,7 +1239,7 @@ function render() {
   const stamp = (when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "")
     + (prevWhen ? ` Flechas ▲▼: cambios respecto al ${prevWhen.replace(/,.*$/, "")}.` : "");
   $("#lede").innerHTML = total
-    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}<span id="syncMsg">${SYNC_TEXT[sync.state] ? " " + esc(SYNC_TEXT[sync.state]) : ""}</span>`
+    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}<span id="syncMsg">${syncText() ? " " + esc(syncText()) : ""}</span>`
     : "No hay jugadores para mostrar.";
 }
 
