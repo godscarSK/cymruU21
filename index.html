@@ -102,6 +102,7 @@ h1 .mark { color: var(--accent); }
   border: 1px solid var(--ink); background: var(--ink); color: var(--panel); font-weight: 600;
 }
 .ages button[aria-pressed="false"] { background: transparent; color: var(--muted); border-color: var(--line); font-weight: 400; text-decoration: line-through; }
+.poss button[aria-pressed="false"] { text-decoration: none; font-weight: 600; }
 .ages button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .range { display: flex; gap: 6px; align-items: center; }
 .check { display: flex; gap: 8px; align-items: center; min-height: 38px; color: var(--ink); font-size: 0.95rem; }
@@ -283,6 +284,10 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <div class="field" role="group" aria-label="Edad">
       Edad
       <span class="ages" id="ages"></span>
+    </div>
+    <div class="field" role="group" aria-label="Posición asignada">
+      Pos.
+      <span class="ages poss" id="poss"></span>
     </div>
     <label class="check" id="formToggle"><input type="checkbox" id="withForm"> Con forma</label>
     <span class="spacer"></span>
@@ -629,7 +634,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], showTeam: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1057,6 +1062,7 @@ function visibleRows() {
   const out = state.players.filter(p => {
     if (q && !(`${p.name} ${state.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
     if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
+    if (state.pos.size && !state.pos.has(estOf(p))) return false;
     if (state.onlyBot && !isBot(p)) return false;
     if (state.onlyInjured && !p.injury) return false;
     if (state.onlySusp && !p.red) return false;
@@ -1177,7 +1183,7 @@ function savePrefs() {
   if (!prefsReady) return;
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify({
-      ages: [...state.ages], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp,
+      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp,
       hidden: state.skills === "hidden", clubs: state.showTeam, sort: state.sort
     }));
   } catch {}
@@ -1188,6 +1194,7 @@ function loadPrefs() {
   try { p = JSON.parse(localStorage.getItem(PREFS_KEY)); } catch {}
   if (!p || typeof p !== "object") return;
   if (Array.isArray(p.ages)) state.ages = new Set(p.ages.filter(a => AGES.includes(a)));
+  if (Array.isArray(p.pos)) state.pos = new Set(p.pos.filter(x => EST_OPTS.includes(x)));
   state.onlyBot = p.onlyBot === true;
   state.onlyInjured = p.onlyInjured === true;
   state.onlySusp = p.onlySusp === true;
@@ -1198,6 +1205,7 @@ function loadPrefs() {
   const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
   press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
   press("#onlySusp", state.onlySusp); press("#onlyHidden", state.skills === "hidden");
+  document.querySelectorAll("#poss button[data-pos]").forEach(b => b.setAttribute("aria-pressed", String(state.pos.has(b.dataset.pos))));
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
 
@@ -1372,6 +1380,14 @@ function init() {
   });
   $("#q").addEventListener("input", e => { state.q = e.target.value; render(); });
   $("#ages").innerHTML = AGES.map(a => `<button type="button" data-age="${a}" aria-pressed="true" title="Mostrar u ocultar a los jugadores de ${a} años">${a}</button>`).join("");
+  $("#poss").innerHTML = EST_OPTS.map(o => `<button type="button" data-pos="${o}" aria-pressed="false" title="Mostrar solo a los jugadores marcados ${o} (puedes combinar varias posiciones)">${o}</button>`).join("");
+  $("#poss").addEventListener("click", e => {
+    const b = e.target.closest("button[data-pos]"); if (!b) return;
+    const o = b.dataset.pos;
+    if (state.pos.has(o)) state.pos.delete(o); else state.pos.add(o);
+    b.setAttribute("aria-pressed", String(state.pos.has(o)));
+    render();
+  });
   $("#ages").addEventListener("click", e => {
     const b = e.target.closest("button[data-age]"); if (!b) return;
     const a = Number(b.dataset.age);
@@ -1400,7 +1416,7 @@ function init() {
     const sel = e.target.closest("select.est"); if (!sel) return;
     setEst(sel.dataset.pid, sel.value);
     sel.dataset.v = sel.value;
-    if (state.sort.key === "est") render();
+    if (state.sort.key === "est" || state.pos.size) render();
   });
   $("#body").addEventListener("click", e => {
     const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
