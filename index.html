@@ -929,7 +929,9 @@ function setSyncState(st, detail = "") { sync.state = st; sync.detail = detail; 
 function explainSync(err) {
   const m = String(err && err.message || err);
   if (err && err.name === "AbortError") return "el servicio tardó más de 15 s en responder (inténtalo de nuevo).";
-  if (err instanceof TypeError) return "el navegador no pudo conectar con el servicio. Revisa que la URL termine en /exec y que la implementación tenga acceso «Cualquier persona».";
+  if (err && err.net) return `el navegador no pudo conectar con el servicio (${sync.fetchErr || "sin detalle"}). Revisa que la URL termine en /exec, que el acceso sea «Cualquier persona» y que ninguna extensión (bloqueador de anuncios) bloquee script.google.com.`;
+  if (err && err.name === "JsonpTimeout") return "el servicio no respondió. Si el navegador bloqueó la lectura directa, hace falta la versión actual de est-sync.gs: pégala en Apps Script y crea una «Nueva versión» de la implementación.";
+  if (err instanceof TypeError) return "error interno de la página: " + m;
   if (err instanceof SyntaxError) return "el servicio no respondió datos válidos (suele pasar si el acceso no es «Cualquier persona» o la URL no es la de la aplicación web).";
   if (/^HTTP \d+/.test(m)) return "el servicio respondió " + m + ".";
   return "el servicio respondió: " + m;
@@ -958,12 +960,39 @@ async function decV(s) {
   const o = unb64u(String(s));
   return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: o.slice(0, 12) }, sync.key, o.slice(12)));
 }
+// Carga una URL como <script> (JSONP): no depende de CORS. El servicio responde «función({...})».
+function jsonp(u) {
+  return new Promise((res, rej) => {
+    const cb = "__cantera_" + Math.random().toString(36).slice(2);
+    const el = document.createElement("script");
+    let tm;
+    const done = () => { delete window[cb]; el.remove(); clearTimeout(tm); };
+    tm = setTimeout(() => { done(); const e = new Error("sin respuesta"); e.name = "JsonpTimeout"; rej(e); }, CONFIG.timeoutMs);
+    window[cb] = d => { done(); res(d); };
+    el.onerror = () => { done(); const e = new Error("no se pudo cargar"); e.net = true; rej(e); };
+    u.searchParams.set("callback", cb);
+    el.src = u.toString();
+    document.head.appendChild(el);
+  });
+}
 async function estCall(params) {
   const u = new URL(CONFIG.estUrl);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-  const r = await fetchWithTimeout(u.toString(), { redirect: "follow", cache: "no-store" });
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const j = await r.json();
+  u.searchParams.set("_", Date.now());          // evita respuestas en caché
+  let j = null;
+  if (!sync.jsonp) {
+    let r = null;
+    try { r = await fetchWithTimeout(u.toString()); }
+    catch (err) {
+      if (err.name === "AbortError") throw err;
+      sync.fetchErr = String(err.message || err);   // casi siempre: el navegador bloqueó la lectura (CORS)
+    }
+    if (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      j = await r.json();
+    } else sync.jsonp = true;                       // desde ahora se usa la carga como <script>
+  }
+  if (!j) j = await jsonp(u);
   if (!j.ok) throw new Error(j.error || "error");
   return j;
 }

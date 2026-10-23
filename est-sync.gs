@@ -10,6 +10,7 @@ const HOJA = "EST";
 
 function doGet(e) {
   const p = (e && e.parameter) || {};
+  CALLBACK_ = /^[A-Za-z_][A-Za-z0-9_]{0,60}$/.test(String(p.callback || "")) ? String(p.callback) : "";
   try {
     if (p.action === "set") return respuesta_(guardar_(p));
     return respuesta_(listar_());
@@ -18,8 +19,13 @@ function doGet(e) {
   }
 }
 
+// Si la petición trae «callback», responde en formato JSONP («funcion({...})»): así la página puede leerlo
+// aunque el navegador bloquee la lectura directa entre sitios.
+let CALLBACK_ = "";
 function respuesta_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  const texto = JSON.stringify(obj);
+  if (CALLBACK_) return ContentService.createTextOutput(CALLBACK_ + "(" + texto + ");").setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(texto).setMimeType(ContentService.MimeType.JSON);
 }
 
 function hoja_() {
