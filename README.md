@@ -71,3 +71,20 @@ Los datos se publican **cifrados** (`data/players.enc.json` y `data/players.prev
 - Para cambiar la contraseña, ejecuta el script con la nueva. Esa semana no habrá flechas (el respaldo anterior ya no se puede leer) y quienes tengan la contraseña vieja guardada verán el aviso para escribir la nueva.
 - El cifrado protege los datos, no el código de la página (botones y diseño), que sigue siendo público. Una contraseña corta se puede adivinar por fuerza bruta.
 - `node check-players.mjs` también lee el archivo cifrado, pidiendo la contraseña.
+
+## Compartir las asignaciones (GK / DEF / MID / ATT) entre dispositivos
+
+Sin configurar nada, las asignaciones de la columna «Est.» se guardan solo en el navegador donde las haces. Para compartirlas entre tus dispositivos se usa un pequeño servicio en tu propia hoja de Google (una sola vez):
+
+1. Abre tu hoja de Google → **Extensiones → Apps Script**.
+2. Borra lo que haya y pega todo el contenido de `est-sync.gs`. Guarda (icono del disquete).
+3. Arriba a la derecha: **Implementar → Nueva implementación → ⚙ → Aplicación web**. Configura *Ejecutar como*: **Yo**, y *Quién tiene acceso*: **Cualquier persona**. Pulsa **Implementar**.
+4. Google pedirá autorización: elige tu cuenta → «Configuración avanzada» → «Ir a (nombre del proyecto)» → **Permitir**. Es tu propio script; solo necesita acceso a esta hoja.
+5. Copia la **URL de la aplicación web** (termina en `/exec`) y pégala en `index.html`, en `CONFIG`, en la línea `estUrl: "",` → `estUrl: "https://script.google.com/macros/s/…/exec",`. Sube el `index.html`.
+
+Cómo funciona y qué tener en cuenta:
+- Los valores viajan **cifrados** con la contraseña de la página: Google y quien conozca la dirección del servicio no pueden leerlos. Se guardan en una pestaña nueva llamada `EST` de tu hoja (no afecta a la primera pestaña, que es la que lee la página).
+- Cada cambio se guarda en el dispositivo al instante y se envía al servicio. Si no hay conexión, queda pendiente y se envía cuando vuelva. Al abrir la página o volver a la pestaña, se traen los cambios hechos en otros dispositivos. Si dos dispositivos cambian al mismo jugador, gana el cambio más reciente.
+- Arriba, junto a la fecha de los datos, la página indica si las asignaciones están sincronizadas o pendientes.
+- Solo se sincroniza con la contraseña de la página puesta (datos cifrados). La clave de escritura del servicio se fija la primera vez que se guarda algo. **Si cambias la contraseña de la página**, ejecuta una vez la función `reiniciarClave` en el editor de Apps Script (menú desplegable de funciones → Ejecutar). Las asignaciones guardadas con la contraseña vieja ya no se podrán leer; cada dispositivo vuelve a enviar las suyas.
+- Si cambias el código del Apps Script, hay que crear una **nueva implementación** (o administrar la actual y elegir «Nueva versión»); la URL no cambia si editas la implementación existente.

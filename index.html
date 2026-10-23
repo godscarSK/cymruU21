@@ -166,16 +166,19 @@ select.est {
   color: var(--ink); background: var(--bg); border: 1px solid var(--line);
 }
 select.est:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
-select.est[data-v="Main"] { background: #d4efdc; border-color: #5b9a74; font-weight: 700; }
-select.est[data-v="Bench"] { background: #dbe7fb; border-color: #6b8fd0; font-weight: 700; }
-select.est[data-v="Observ"] { background: #eceae2; border-color: #9a9684; font-weight: 700; }
-:root[data-theme="dark"] select.est[data-v="Main"] { background: #1f4130; border-color: #4f9d73; }
-:root[data-theme="dark"] select.est[data-v="Bench"] { background: #1d3157; border-color: #5a82c9; }
-:root[data-theme="dark"] select.est[data-v="Observ"] { background: #33322b; border-color: #8a8674; }
+select.est[data-v="GK"] { background: #fbefc2; border-color: #c9a227; font-weight: 700; }
+select.est[data-v="DEF"] { background: #dbe7fb; border-color: #6b8fd0; font-weight: 700; }
+select.est[data-v="MID"] { background: #d4efdc; border-color: #5b9a74; font-weight: 700; }
+select.est[data-v="ATT"] { background: #f9d9d6; border-color: #d0605a; font-weight: 700; }
+:root[data-theme="dark"] select.est[data-v="GK"] { background: #4a3f12; border-color: #c9a227; }
+:root[data-theme="dark"] select.est[data-v="DEF"] { background: #1d3157; border-color: #5a82c9; }
+:root[data-theme="dark"] select.est[data-v="MID"] { background: #1f4130; border-color: #4f9d73; }
+:root[data-theme="dark"] select.est[data-v="ATT"] { background: #4a1f1c; border-color: #d0605a; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) select.est[data-v="Main"] { background: #1f4130; border-color: #4f9d73; }
-  :root:not([data-theme="light"]) select.est[data-v="Bench"] { background: #1d3157; border-color: #5a82c9; }
-  :root:not([data-theme="light"]) select.est[data-v="Observ"] { background: #33322b; border-color: #8a8674; }
+  :root:not([data-theme="light"]) select.est[data-v="GK"] { background: #4a3f12; border-color: #c9a227; }
+  :root:not([data-theme="light"]) select.est[data-v="DEF"] { background: #1d3157; border-color: #5a82c9; }
+  :root:not([data-theme="light"]) select.est[data-v="MID"] { background: #1f4130; border-color: #4f9d73; }
+  :root:not([data-theme="light"]) select.est[data-v="ATT"] { background: #4a1f1c; border-color: #d0605a; }
 }
 td.c-name .bot { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: #f5c400; color: #2b2300; text-transform: uppercase; letter-spacing: .03em; }
 td.c-name .u21 { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
@@ -291,7 +294,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
     <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
     <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
-    <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Skills Ocultas</button>
+    <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
     <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
   </section>
 
@@ -384,6 +387,7 @@ const CONFIG = {
   apiBase: "https://sokker.org/api",
   staticData: "data/players.json",
   prevData: "data/players.prev.json",
+  estUrl: "",                                  // dirección de la aplicación web de Apps Script (ver README) para compartir las asignaciones entre dispositivos
   encData: "data/players.enc.json",            // datos cifrados con la contraseña de la página
   encPrevData: "data/players.prev.enc.json",   // respaldo de la semana anterior (opcional)
   cacheHours: 6,
@@ -441,7 +445,7 @@ function compositeValue(p, c) {
 
 const COLS = [
   { key: "n",        label: "#",                 cls: "c-n", left: true },
-  { key: "est",      label: "Est.",              cls: "c-est", title: "Tu asignación para cada jugador: Main, Bench u Observ" },
+  { key: "est",      label: "Est.",              cls: "c-est", title: "Tu asignación para cada jugador: GK, DEF, MID o ATT" },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
   { key: "team",     label: "Club", cls: "c-team" },
   { key: "age",      label: "Edad" },
@@ -753,6 +757,7 @@ async function load(force) {
     const u = await unlock(env, myId);
     if (!u) return;
     st = u.data; pwUsed = u.pw;
+    estStart(pwUsed);
   } else {
     st = await tryStatic(force);
     if (myId !== loadId) return;
@@ -889,16 +894,114 @@ function buildHead() {
   }).join("");
 }
 
-/* ─────────────── Asignación Main / Bench / Observ (se guarda en este navegador) ─────────────── */
-const EST_KEY = "cantera:est";
-const EST_OPTS = ["Main", "Bench", "Observ"];
-let estMap = {};
-try { const o = JSON.parse(localStorage.getItem(EST_KEY)); if (o && typeof o === "object") estMap = o; } catch {}
-const estOf = p => EST_OPTS.includes(estMap[p.pid]) ? estMap[p.pid] : "";
+/* ─────────────── Asignación Main / Bench / Observ ───────────────
+   Se guarda en este navegador y, si CONFIG.estUrl está definida, se sincroniza entre dispositivos a través de
+   un Apps Script de tu hoja de Google. Los valores viajan cifrados con la contraseña de la página. */
+const EST_KEY = "cantera:est2", EST_DIRTY_KEY = "cantera:est2dirty";
+const EST_OPTS = ["GK", "DEF", "MID", "ATT"];
+let estMap = {};      // pid → { v, t }   (t = momento del último cambio, en ms)
+const sync = { key: null, token: "", pw: "", dirty: new Set(), busy: false, state: "local" };
+try {
+  const o = JSON.parse(localStorage.getItem(EST_KEY));
+  if (o && typeof o === "object") estMap = o;
+  else {                                                   // migra el formato anterior { pid: "Main" }
+    const old = JSON.parse(localStorage.getItem("cantera:est"));
+    if (old && typeof old === "object") for (const [k, v] of Object.entries(old)) if (EST_OPTS.includes(v)) { estMap[k] = { v, t: 1 }; sync.dirty.add(k); }
+  }
+  const d = JSON.parse(localStorage.getItem(EST_DIRTY_KEY));
+  if (Array.isArray(d)) d.forEach(k => sync.dirty.add(String(k)));
+} catch {}
+const saveEst = () => { try { localStorage.setItem(EST_KEY, JSON.stringify(estMap)); localStorage.setItem(EST_DIRTY_KEY, JSON.stringify([...sync.dirty])); } catch {} };
+const estOf = p => { const e = estMap[p.pid]; return e && EST_OPTS.includes(e.v) ? e.v : ""; };
 function setEst(pid, v) {
-  if (EST_OPTS.includes(v)) estMap[pid] = v; else delete estMap[pid];
-  try { localStorage.setItem(EST_KEY, JSON.stringify(estMap)); } catch {}
+  estMap[pid] = { v: EST_OPTS.includes(v) ? v : "", t: Date.now() };
+  sync.dirty.add(pid); saveEst();
+  pushDirty();
 }
+
+const SYNC_TEXT = { local: "", ok: "Asignaciones sincronizadas.", pending: "Sincronizando asignaciones…",
+  offline: "Asignaciones pendientes de sincronizar (sin conexión con el servicio).",
+  token: "No se pudo sincronizar las asignaciones: el servicio rechazó la clave (ver README)." };
+function setSyncState(st) { sync.state = st; const el = document.getElementById("syncMsg"); if (el) el.textContent = " " + SYNC_TEXT[st]; }
+
+const te = new TextEncoder();
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = t => Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+async function estInit(pw) {
+  const p = String(pw).normalize("NFC");
+  const km = await crypto.subtle.importKey("raw", te.encode(p), "PBKDF2", false, ["deriveKey"]);
+  sync.key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: te.encode("cantera-est-v1"), iterations: 250000, hash: "SHA-256" },
+    km, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  sync.token = hex(await crypto.subtle.digest("SHA-256", te.encode("cantera-est-token|" + p)));
+}
+async function encV(v) {
+  if (!v) return "";
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, sync.key, te.encode(v)));
+  const o = new Uint8Array(12 + ct.length); o.set(iv); o.set(ct, 12);
+  return b64u(o);
+}
+async function decV(s) {
+  if (!s) return "";
+  const o = unb64u(String(s));
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: o.slice(0, 12) }, sync.key, o.slice(12)));
+}
+async function estCall(params) {
+  const u = new URL(CONFIG.estUrl);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  const r = await fetchWithTimeout(u.toString(), { redirect: "follow", cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "error");
+  return j;
+}
+async function pushDirty() {
+  if (!CONFIG.estUrl || !sync.key || sync.busy || !sync.dirty.size) return;
+  sync.busy = true; setSyncState("pending");
+  let failed = null;
+  try {
+    for (const pid of [...sync.dirty]) {
+      const e = estMap[pid];
+      if (!e) { sync.dirty.delete(pid); continue; }
+      await estCall({ action: "set", pid, v: await encV(e.v), t: e.t, token: sync.token });
+      if (estMap[pid] === e) sync.dirty.delete(pid);
+      saveEst();
+    }
+  } catch (err) { failed = err; }
+  sync.busy = false;
+  if (failed) { setSyncState(/token/i.test(failed.message) ? "token" : "offline"); return; }
+  if (sync.dirty.size) pushDirty(); else setSyncState("ok");
+}
+async function pullEst() {
+  if (!CONFIG.estUrl || !sync.key) return;
+  try {
+    const j = await estCall({ action: "list" });
+    const remote = new Set();
+    let changed = false;
+    for (const it of j.items || []) {
+      const pid = String(it.pid), t = Number(it.t) || 0;
+      remote.add(pid);
+      let v; try { v = await decV(it.v); } catch { continue; }
+      const loc = estMap[pid];
+      if (!loc || t > loc.t) { estMap[pid] = { v: EST_OPTS.includes(v) ? v : "", t }; sync.dirty.delete(pid); changed = true; }
+      else if (loc.t > t) sync.dirty.add(pid);
+    }
+    for (const pid of Object.keys(estMap)) if (!remote.has(pid)) sync.dirty.add(pid);
+    saveEst();
+    if (changed) render();
+    if (sync.dirty.size) await pushDirty(); else setSyncState("ok");
+  } catch { setSyncState("offline"); }
+}
+let estStarted = "";
+async function estStart(pw) {
+  if (!CONFIG.estUrl) return;
+  if (estStarted !== pw) { estStarted = pw; try { await estInit(pw); } catch { return; } }
+  setSyncState("pending");
+  await pullEst();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pullEst(); });
+window.addEventListener("online", () => { pullEst(); });
 
 function sortValue(p, key) {
   if (key === "est") { const i = EST_OPTS.indexOf(estOf(p)); return i < 0 ? null : i; }
@@ -1126,7 +1229,7 @@ function render() {
   const stamp = (when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "")
     + (prevWhen ? ` Flechas ▲▼: cambios respecto al ${prevWhen.replace(/,.*$/, "")}.` : "");
   $("#lede").innerHTML = total
-    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}`
+    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}<span id="syncMsg">${SYNC_TEXT[sync.state] ? " " + esc(SYNC_TEXT[sync.state]) : ""}</span>`
     : "No hay jugadores para mostrar.";
 }
 
