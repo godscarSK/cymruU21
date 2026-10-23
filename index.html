@@ -376,6 +376,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 <noscript>Esta página necesita JavaScript para mostrar la tabla.</noscript>
 
+<script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
 
@@ -387,7 +388,7 @@ const CONFIG = {
   apiBase: "https://sokker.org/api",
   staticData: "data/players.json",
   prevData: "data/players.prev.json",
-  estUrl: "https://script.google.com/macros/s/AKfycbw0UdnUO-UyX48DYVxm8IrcJ9wmpvFku_uGGKhU3selrHGU-5a1LDWhGgPapllUajPc/exec",                                  // dirección de la aplicación web de Apps Script (ver README) para compartir las asignaciones entre dispositivos
+  estUrl: (window.CANTERA_CONFIG && window.CANTERA_CONFIG.estUrl) || "",   // se define en config.js (ver README); así no se borra al reemplazar index.html
   encData: "data/players.enc.json",            // datos cifrados con la contraseña de la página
   encPrevData: "data/players.prev.enc.json",   // respaldo de la semana anterior (opcional)
   cacheHours: 6,
@@ -445,7 +446,7 @@ function compositeValue(p, c) {
 
 const COLS = [
   { key: "n",        label: "#",                 cls: "c-n", left: true },
-  { key: "est",      label: "Est.",              cls: "c-est", title: "Tu asignación para cada jugador: GK, DEF, MID o ATT" },
+  { key: "est",      label: "Pos.",              cls: "c-est", title: "Tu asignación para cada jugador: GK, DEF, MID o ATT" },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
   { key: "team",     label: "Club", cls: "c-team" },
   { key: "age",      label: "Edad" },

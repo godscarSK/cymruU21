@@ -74,13 +74,13 @@ Los datos se publican **cifrados** (`data/players.enc.json` y `data/players.prev
 
 ## Compartir las asignaciones (GK / DEF / MID / ATT) entre dispositivos
 
-Sin configurar nada, las asignaciones de la columna «Est.» se guardan solo en el navegador donde las haces. Para compartirlas entre tus dispositivos se usa un pequeño servicio en tu propia hoja de Google (una sola vez):
+Sin configurar nada, las asignaciones de la columna «Pos.» se guardan solo en el navegador donde las haces. Para compartirlas entre tus dispositivos se usa un pequeño servicio en tu propia hoja de Google (una sola vez):
 
 1. Abre tu hoja de Google → **Extensiones → Apps Script**.
 2. Borra lo que haya y pega todo el contenido de `est-sync.gs`. Guarda (icono del disquete).
 3. Arriba a la derecha: **Implementar → Nueva implementación → ⚙ → Aplicación web**. Configura *Ejecutar como*: **Yo**, y *Quién tiene acceso*: **Cualquier persona**. Pulsa **Implementar**.
 4. Google pedirá autorización: elige tu cuenta → «Configuración avanzada» → «Ir a (nombre del proyecto)» → **Permitir**. Es tu propio script; solo necesita acceso a esta hoja.
-5. Copia la **URL de la aplicación web** (termina en `/exec`) y pégala en `index.html`, en `CONFIG`, en la línea `estUrl: "",` → `estUrl: "https://script.google.com/macros/s/…/exec",`. Sube el `index.html`.
+5. Copia la **URL de la aplicación web** (termina en `/exec`) y pégala en el archivo **`config.js`**, entre las comillas de `estUrl: ""`. Sube `config.js` al repositorio, junto a `index.html`. Ese archivo es solo tuyo: al actualizar `index.html` no hace falta tocarlo.
 
 Cómo funciona y qué tener en cuenta:
 - Los valores viajan **cifrados** con la contraseña de la página: Google y quien conozca la dirección del servicio no pueden leerlos. Se guardan en una pestaña nueva llamada `EST` de tu hoja (no afecta a la primera pestaña, que es la que lee la página).
