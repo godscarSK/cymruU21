@@ -157,8 +157,8 @@ tbody tr:hover td.c-n, tbody tr:hover td.c-name { background-color: color-mix(in
 
 td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
 td.c-name a:hover { text-decoration-color: var(--accent); }
-td.c-name .bot { margin-left: 8px; padding: 2px 7px; border-radius: 3px; font-size: .72rem; font-weight: 700; background: var(--accent); color: var(--accent-ink); text-transform: uppercase; letter-spacing: .03em; }
-td.c-name .u21 { margin-left: 8px; padding: 2px 7px; border-radius: 3px; font-size: .72rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
+td.c-name .bot { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--accent); color: var(--accent-ink); text-transform: uppercase; letter-spacing: .03em; }
+td.c-name .u21 { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
 td.c-name .copypid {
   all: unset; box-sizing: border-box; margin-left: 8px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
   vertical-align: middle; cursor: pointer; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
@@ -175,6 +175,8 @@ td.c-name .copypid svg { width: 14px; height: 14px; }
 
 td.pos { min-width: 3rem; }
 td.sk { min-width: 2.4rem; }
+table.no-team .c-team { display: none; }
+td.c-team { white-space: nowrap; }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
 .chg { font-size: .7em; vertical-align: 1px; }
@@ -257,6 +259,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <span class="who" id="who" hidden></span>
     <button class="btn" id="login" type="button">Conectar a Sokker</button>
     <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
+    <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Mostrar Clubes</button>
     <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
     <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Skills Ocultas</button>
     <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
@@ -393,8 +396,8 @@ function compositeValue(p, c) {
 const COLS = [
   { key: "n",        label: "#",                 cls: "c-n", left: true },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
+  { key: "team",     label: "Club", cls: "c-team" },
   { key: "age",      label: "Edad" },
-  ...(CONFIG.showTeam ? [{ key: "team", label: "Equipo", left: true }] : []),
   { key: "value",    label: "Valor" },
   { key: "form",     label: "Forma" },
   { key: "exp",      label: "Exp." },
@@ -403,6 +406,7 @@ const COLS = [
   ...COMPOSITES.map(c => ({ key: c.key, label: c.label, title: c.title, comp: c })),
   ...(CONFIG.showPositions ? POSITIONS.map(p => ({ key: p.key, label: p.label, pos: true })) : [])
 ];
+const TEAM_IDX = COLS.findIndex(c => c.key === "team");
 
 const SKILL_KEYS = ["stamina", "pace", "technique", "passing", "keeper", "defender", "playmaker", "striker"];
 const REQUIRED_SKILLS = ["keeper", "pace", "passing", "defender", "technique", "playmaker", "striker"];
@@ -573,7 +577,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], onlyBot: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], showTeam: false, onlyBot: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -787,7 +791,7 @@ function sortValue(p, key) {
 function visibleRows() {
   const q = state.q.trim().toLowerCase();
   const out = state.players.filter(p => {
-    if (q && !(`${p.name} ${CONFIG.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
+    if (q && !(`${p.name} ${state.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
     if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
     if (state.onlyBot && !isBot(p)) return false;
     const hs = hasSkills(p.skills);
@@ -942,6 +946,7 @@ function render() {
   }).join("") : `<tr><td class="empty" colspan="${COLS.length}">Ningún jugador coincide con los filtros. Borra la búsqueda o amplía el rango de edad.</td></tr>`;
 
   if (rows.length) document.querySelectorAll("#body tr").forEach(tr => {
+    tr.children[TEAM_IDX]?.classList.add("c-team");
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
 
@@ -968,6 +973,12 @@ function render() {
     : "No hay jugadores para mostrar.";
 }
 
+function setClubs(on) {
+  state.showTeam = on;
+  document.querySelector("table").classList.toggle("no-team", !on);
+  $("#showClubs").setAttribute("aria-pressed", String(on));
+  $("#q").placeholder = on ? "Nombre, club o PID" : "Nombre o PID";
+}
 let toastTimer;
 function toast(msg) {
   const t = $("#toast");
@@ -990,10 +1001,11 @@ async function copyPid(pid) {
 
 async function copyTable() {
   const rows = visibleRows();
-  const head = COLS.map(c => c.long || (c.label === "#" ? "N" : c.label));
+  const cols = COLS.filter(c => c.key !== "team" || state.showTeam);
+  const head = cols.map(c => c.long || (c.label === "#" ? "N" : c.label));
   const lines = [head.join("\t")];
   for (const p of rows) {
-    lines.push(COLS.map(c => {
+    lines.push(cols.map(c => {
       if (c.key === "n") return p.n;
       if (c.key === "name") return p.name || p.pid;
       return cellText(p, c.key).replace(/\t|\n/g, " ");
@@ -1045,7 +1057,7 @@ function init() {
   document.title = CONFIG.title;
   $("#title").firstChild.textContent = CONFIG.title;
   initTheme();
-  $("#q").placeholder = CONFIG.showTeam ? "Nombre, equipo o PID" : "Nombre o PID";
+  setClubs(CONFIG.showTeam);
   $("#formToggle").hidden = !CONFIG.showPositions;   // «Con forma» solo afecta a las posiciones
   $("#formulas").hidden = !CONFIG.showPositions;
   buildHead();
@@ -1077,6 +1089,7 @@ function init() {
   $("#body").addEventListener("click", e => {
     const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
   });
+  $("#showClubs").addEventListener("click", () => { setClubs(!state.showTeam); render(); });
   $("#onlyBot").addEventListener("click", e => {
     state.onlyBot = !state.onlyBot;
     e.currentTarget.setAttribute("aria-pressed", String(state.onlyBot));
