@@ -19,6 +19,7 @@
   --accent-ink: #ffffff;
   --bar: #5b9a74;
   --hl: #ffe9a8;
+  --zebra: #f1f5f3;
   --notice-bg: #fff3d6;
   --notice-line: #d9b240;
   --error-bg: #fde8e6;
@@ -37,6 +38,7 @@
     --accent-ink: #1a0b0a;
     --bar: #4f9d73;
     --hl: #5a4a12;
+    --zebra: #1b2b36;
     --notice-bg: #3a3118;
     --notice-line: #8a7326;
     --error-bg: #3b1d1b;
@@ -47,7 +49,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0f1a22; --panel: #16232d; --ink: #e6edf1; --muted: #93a4b0; --line: #2a3b47;
-  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --hl: #5a4a12; --notice-bg: #3a3118;
+  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --hl: #5a4a12; --zebra: #1b2b36; --notice-bg: #3a3118;
   --notice-line: #8a7326; --error-bg: #3b1d1b; --error-line: #ef6a62; --head-bg: #1d2e3a; --focus: #6aaeff;
 }
 
@@ -140,6 +142,7 @@ th.c-name button, td.c-name { justify-content: flex-start; text-align: left; }
 th[aria-sort="ascending"] button::after { content: "▲"; font-size: .65em; color: var(--accent); }
 th[aria-sort="descending"] button::after { content: "▼"; font-size: .65em; color: var(--accent); }
 td.c-name { text-align: left; }
+tbody tr:nth-child(even) td { background-color: var(--zebra); }
 tbody tr:hover td { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
 th.c-n, td.c-n { position: sticky; left: 0; width: 3.2rem; min-width: 3.2rem; color: var(--muted); z-index: 1; background: var(--panel); }
@@ -936,9 +939,9 @@ function render() {
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
 
-  // Al ordenar por DEF, DEFside, MID, ATT, ATTside o Suma, se resaltan las skills que entran en esa suma.
+  // Al ordenar por DEF, DEFside, MID, ATT o ATTside se resaltan las skills que entran en esa suma; Suma solo se resalta a sí misma.
   const act = compOf(state.sort.key);
-  const hlKeys = new Set(act ? [act.key, ...act.parts.map(k => "sk_" + k)] : []);
+  const hlKeys = new Set(!act ? [] : act === SUM_COMP ? [act.key] : [act.key, ...act.parts.map(k => "sk_" + k)]);
   COLS.forEach((c, i) => {
     document.querySelector(`#head th[data-key="${c.key}"]`)?.classList.toggle("hl", hlKeys.has(c.key));
     if (rows.length && hlKeys.has(c.key)) document.querySelectorAll(`#body tr td:nth-child(${i + 1})`).forEach(td => td.classList.add("hl"));
