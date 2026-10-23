@@ -18,6 +18,7 @@
   --accent: #c8352f;
   --accent-ink: #ffffff;
   --bar: #5b9a74;
+  --hl: #ffe9a8;
   --notice-bg: #fff3d6;
   --notice-line: #d9b240;
   --error-bg: #fde8e6;
@@ -35,6 +36,7 @@
     --accent: #ef6a62;
     --accent-ink: #1a0b0a;
     --bar: #4f9d73;
+    --hl: #5a4a12;
     --notice-bg: #3a3118;
     --notice-line: #8a7326;
     --error-bg: #3b1d1b;
@@ -45,7 +47,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0f1a22; --panel: #16232d; --ink: #e6edf1; --muted: #93a4b0; --line: #2a3b47;
-  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --notice-bg: #3a3118;
+  --accent: #ef6a62; --accent-ink: #1a0b0a; --bar: #4f9d73; --hl: #5a4a12; --notice-bg: #3a3118;
   --notice-line: #8a7326; --error-bg: #3b1d1b; --error-line: #ef6a62; --head-bg: #1d2e3a; --focus: #6aaeff;
 }
 
@@ -167,6 +169,8 @@ td.pos { min-width: 3rem; }
 td.sk { min-width: 2.4rem; }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
+th.hl { background: var(--hl); }
+tbody tr td.hl { background-color: var(--hl); font-weight: 600; }
 td.sk, td.pos { padding-left: 4px; padding-right: 4px; }
 th.ctr button { padding-left: 4px; padding-right: 4px; }
 td.sk, td.pos, th.ctr { text-align: center; }
@@ -908,6 +912,14 @@ function render() {
 
   if (rows.length) document.querySelectorAll("#body tr").forEach(tr => {
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
+  });
+
+  // Al ordenar por DEF, DEFside, MID, ATT, ATTside o Suma, se resaltan las skills que entran en esa suma.
+  const act = compOf(state.sort.key);
+  const hlKeys = new Set(act ? [act.key, ...act.parts.map(k => "sk_" + k)] : []);
+  COLS.forEach((c, i) => {
+    document.querySelector(`#head th[data-key="${c.key}"]`)?.classList.toggle("hl", hlKeys.has(c.key));
+    if (rows.length && hlKeys.has(c.key)) document.querySelectorAll(`#body tr td:nth-child(${i + 1})`).forEach(td => td.classList.add("hl"));
   });
 
   document.querySelectorAll("#head th").forEach(th => {
