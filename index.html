@@ -929,7 +929,7 @@ function setSyncState(st, detail = "") { sync.state = st; sync.detail = detail; 
 function explainSync(err) {
   const m = String(err && err.message || err);
   if (err && err.name === "AbortError") return "el servicio tardó más de 15 s en responder (inténtalo de nuevo).";
-  if (err && err.net) return `el navegador no pudo conectar con el servicio (${sync.fetchErr || "sin detalle"}). Revisa que la URL termine en /exec, que el acceso sea «Cualquier persona» y que ninguna extensión (bloqueador de anuncios) bloquee script.google.com.`;
+  if (err && err.net) return `el navegador no pudo conectar con el servicio (${sync.fetchErr || "sin detalle"}). Revisa que la URL termine en /exec, que el acceso sea «Cualquier persona» y que ninguna extensión (bloqueador de anuncios) bloquee script.google.com. Prueba además abrir en el navegador la URL del servicio añadiendo ?callback=hola al final: debe responder hola({"ok":true,...}); si responde sin «hola(», falta publicar la versión nueva de est-sync.gs.`;
   if (err && err.name === "JsonpTimeout") return "el servicio no respondió. Si el navegador bloqueó la lectura directa, hace falta la versión actual de est-sync.gs: pégala en Apps Script y crea una «Nueva versión» de la implementación.";
   if (err instanceof TypeError) return "error interno de la página: " + m;
   if (err instanceof SyntaxError) return "el servicio no respondió datos válidos (suele pasar si el acceso no es «Cualquier persona» o la URL no es la de la aplicación web).";
