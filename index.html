@@ -153,12 +153,30 @@ tbody tr:hover td { background-color: color-mix(in srgb, var(--accent) 7%, var(-
 
 th.c-n, td.c-n { position: sticky; left: 0; width: 3.2rem; min-width: 3.2rem; color: var(--muted); z-index: 1; background: var(--panel); }
 th.c-n { z-index: 3; background: var(--head-bg); }
-th.c-name, td.c-name { position: sticky; left: 3.2rem; z-index: 1; background: var(--panel); border-right: 1px solid var(--line); }
+th.c-est, td.c-est { position: sticky; left: 3.2rem; width: 5.6rem; min-width: 5.6rem; z-index: 1; background: var(--panel); padding-left: 4px; padding-right: 4px; }
+th.c-est { z-index: 3; background: var(--head-bg); }
+th.c-name, td.c-name { position: sticky; left: 8.8rem; z-index: 1; background: var(--panel); border-right: 1px solid var(--line); }
 th.c-name { z-index: 3; background: var(--head-bg); }
 tbody tr:hover td.c-n, tbody tr:hover td.c-name { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
 td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
 td.c-name a:hover { text-decoration-color: var(--accent); }
+select.est {
+  font: inherit; font-size: .85rem; width: 100%; min-height: 30px; padding: 2px 2px; border-radius: 4px; cursor: pointer;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+}
+select.est:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+select.est[data-v="Main"] { background: #d4efdc; border-color: #5b9a74; font-weight: 700; }
+select.est[data-v="Bench"] { background: #dbe7fb; border-color: #6b8fd0; font-weight: 700; }
+select.est[data-v="Observ"] { background: #eceae2; border-color: #9a9684; font-weight: 700; }
+:root[data-theme="dark"] select.est[data-v="Main"] { background: #1f4130; border-color: #4f9d73; }
+:root[data-theme="dark"] select.est[data-v="Bench"] { background: #1d3157; border-color: #5a82c9; }
+:root[data-theme="dark"] select.est[data-v="Observ"] { background: #33322b; border-color: #8a8674; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select.est[data-v="Main"] { background: #1f4130; border-color: #4f9d73; }
+  :root:not([data-theme="light"]) select.est[data-v="Bench"] { background: #1d3157; border-color: #5a82c9; }
+  :root:not([data-theme="light"]) select.est[data-v="Observ"] { background: #33322b; border-color: #8a8674; }
+}
 td.c-name .bot { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: #f5c400; color: #2b2300; text-transform: uppercase; letter-spacing: .03em; }
 td.c-name .u21 { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
 td.c-name .inj { margin-left: 8px; display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 700; color: var(--inj); white-space: nowrap; vertical-align: middle; }
@@ -240,7 +258,8 @@ dialog.dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); fon
 dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 640px) {
-  th.c-name, td.c-name { left: 2.6rem; }
+  th.c-est, td.c-est { left: 2.6rem; }
+  th.c-name, td.c-name { left: 8.2rem; }
   th.c-n, td.c-n { width: 2.6rem; min-width: 2.6rem; padding-left: 6px; padding-right: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .progress > i { transition: none; } }
@@ -422,12 +441,12 @@ function compositeValue(p, c) {
 
 const COLS = [
   { key: "n",        label: "#",                 cls: "c-n", left: true },
+  { key: "est",      label: "Est.",              cls: "c-est", title: "Tu asignación para cada jugador: Main, Bench u Observ" },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
   { key: "team",     label: "Club", cls: "c-team" },
   { key: "age",      label: "Edad" },
   { key: "value",    label: "Valor" },
   { key: "form",     label: "Forma" },
-  { key: "exp",      label: "Exp." },
   ...SKILL_COLUMNS.map(s => ({ key: "sk_" + s.skill, label: s.label, title: s.title, skill: s.skill })),
   { key: "c_sum", label: "Suma", title: "Suma de las 8 skills", comp: SUM_COMP },
   ...COMPOSITES.map(c => ({ key: c.key, label: c.label, title: c.title, comp: c })),
@@ -870,7 +889,19 @@ function buildHead() {
   }).join("");
 }
 
+/* ─────────────── Asignación Main / Bench / Observ (se guarda en este navegador) ─────────────── */
+const EST_KEY = "cantera:est";
+const EST_OPTS = ["Main", "Bench", "Observ"];
+let estMap = {};
+try { const o = JSON.parse(localStorage.getItem(EST_KEY)); if (o && typeof o === "object") estMap = o; } catch {}
+const estOf = p => EST_OPTS.includes(estMap[p.pid]) ? estMap[p.pid] : "";
+function setEst(pid, v) {
+  if (EST_OPTS.includes(v)) estMap[pid] = v; else delete estMap[pid];
+  try { localStorage.setItem(EST_KEY, JSON.stringify(estMap)); } catch {}
+}
+
 function sortValue(p, key) {
+  if (key === "est") { const i = EST_OPTS.indexOf(estOf(p)); return i < 0 ? null : i; }
   if (POSITIONS.some(x => x.key === key)) return p.sc ? p.sc[key] : null;
   if (key.startsWith("sk_")) { const s = p.skills?.[key.slice(3)]; return Number.isFinite(s) ? s : null; }
   if (key.startsWith("c_")) return compositeValue(p, compOf(key));
@@ -909,6 +940,7 @@ function visibleRows() {
 
 function cellText(p, key) {
   switch (key) {
+    case "est": return estOf(p);
     case "value": return p.value == null ? "" : nf.format(p.value) + (p.currency ? " " + p.currency : "");
     case "injury": return p.injury ? `Lesión ${p.injury} d` : (p.loaded ? (p.nt || "") : "");
     default: {
@@ -995,7 +1027,39 @@ async function logout() {
   load(true);
 }
 
+/* ─────────────── Configuración recordada ─────────────── */
+const PREFS_KEY = "cantera:prefs";
+let prefsReady = false;   // no se guarda nada hasta haber leído lo guardado
+function savePrefs() {
+  if (!prefsReady) return;
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      ages: [...state.ages], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp,
+      hidden: state.skills === "hidden", clubs: state.showTeam, sort: state.sort
+    }));
+  } catch {}
+}
+function loadPrefs() {
+  let p = null;
+  prefsReady = true;
+  try { p = JSON.parse(localStorage.getItem(PREFS_KEY)); } catch {}
+  if (!p || typeof p !== "object") return;
+  if (Array.isArray(p.ages)) state.ages = new Set(p.ages.filter(a => AGES.includes(a)));
+  state.onlyBot = p.onlyBot === true;
+  state.onlyInjured = p.onlyInjured === true;
+  state.onlySusp = p.onlySusp === true;
+  state.skills = p.hidden === true ? "hidden" : "all";
+  if (p.sort && COLS.some(c => c.key === p.sort.key) && (p.sort.dir === 1 || p.sort.dir === -1)) state.sort = { key: p.sort.key, dir: p.sort.dir };
+  if (!CONFIG.showTeam && typeof p.clubs === "boolean") setClubs(p.clubs);
+  // Sincroniza el aspecto de los botones con lo recuperado.
+  const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
+  press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
+  press("#onlySusp", state.onlySusp); press("#onlyHidden", state.skills === "hidden");
+  document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
+}
+
 function render() {
+  savePrefs();
   updateSessionUI();
   const rows = visibleRows();
   const maxBy = {};
@@ -1005,6 +1069,7 @@ function render() {
   $("#body").innerHTML = rows.length ? rows.map(p => {
     const tds = COLS.map(c => {
       if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
+      if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
       if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
@@ -1156,7 +1221,7 @@ function init() {
   $("#head").addEventListener("click", e => {
     const th = e.target.closest("th"); if (!th) return;
     const key = th.dataset.key;
-    const textual = key === "name" || key === "team";
+    const textual = key === "name" || key === "team" || key === "est";
     state.sort = state.sort.key === key
       ? { key, dir: -state.sort.dir }
       : { key, dir: textual || key === "n" ? 1 : -1 };
@@ -1188,6 +1253,12 @@ function init() {
     e.currentTarget.setAttribute("aria-pressed", String(state.skills === "hidden"));
     render();
   });
+  $("#body").addEventListener("change", e => {
+    const sel = e.target.closest("select.est"); if (!sel) return;
+    setEst(sel.dataset.pid, sel.value);
+    sel.dataset.v = sel.value;
+    if (state.sort.key === "est") render();
+  });
   $("#body").addEventListener("click", e => {
     const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
   });
@@ -1210,6 +1281,7 @@ function init() {
   $("#forgetPw").addEventListener("click", () => { forgetPw(); location.reload(); });
   $("#lgForm").addEventListener("submit", submitLogin);
   $("#lgCancel").addEventListener("click", () => { $("#lgPass").value = ""; $("#dlg").close(); });
+  loadPrefs();
   render();
   load(false);
 }
