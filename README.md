@@ -53,3 +53,11 @@ Todo está al inicio del `<script>` de `index.html`, en `CONFIG`: título, ID de
 ## Equipos bot
 
 Junto al nombre del jugador aparece "Equipo bot" cuando su equipo no tiene dueño. Se detecta con `GET /team/{id}/owner` (404 = sin dueño). `node fetch-players.mjs` lo guarda en `data/players.json` (clave `teams`), así que hay que volver a ejecutarlo para que aparezcan las etiquetas.
+
+## Cambios semanales (flechas ▲▼)
+
+- Cada vez que ejecutas `node fetch-players.mjs`, el script guarda además `data/players.prev.json`: el `players.json` de la semana anterior.
+- La semana va de **jueves a miércoles**. El respaldo se renueva solo la primera vez que ejecutas el script cada jueves, y se conserva sin cambios hasta el miércoles siguiente. Puedes ejecutarlo varias veces en la semana sin perder la comparación.
+- La página compara ambos archivos y marca con ▲ (subió) o ▼ (bajó) las skills que cambiaron. Al pasar el mouse se ve el valor anterior.
+- Sube **los dos archivos** (`players.json` y `players.prev.json`) a la carpeta `data` del repositorio.
+- No se marca nada si el jugador no tenía skills visibles en alguna de las dos semanas, ni si es nuevo en la hoja. La primera comparación aparece después de la segunda ejecución semanal.

@@ -169,6 +169,12 @@ td.pos { min-width: 3rem; }
 td.sk { min-width: 2.4rem; }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
+.chg { font-size: .7em; vertical-align: 1px; }
+.chg.up { color: #1f8f4a; }
+.chg.down { color: #c8352f; }
+:root[data-theme="dark"] .chg.up { color: #5fd58b; }
+:root[data-theme="dark"] .chg.down { color: #ff8a82; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chg.up { color: #5fd58b; } :root:not([data-theme="light"]) .chg.down { color: #ff8a82; } }
 th.hl { background: var(--hl); }
 tbody tr td.hl { background-color: var(--hl); font-weight: 600; }
 td.sk, td.pos { padding-left: 4px; padding-right: 4px; }
@@ -321,7 +327,8 @@ const CONFIG = {
   sheetId: "1kBi5kAlC7dlmQ3jPi5D1SbtIkNME8KI5SxIG0XRIMWE",
   sheetTab: "",                       // nombre de la pestaña; vacío = la primera
   apiBase: "https://sokker.org/api",
-  staticData: "data/players.json",    // si existe, se usa en vez de llamar a la API desde el navegador
+  staticData: "data/players.json",
+  prevData: "data/players.prev.json",   // respaldo de la semana anterior (opcional)    // si existe, se usa en vez de llamar a la API desde el navegador
   cacheHours: 6,
   concurrency: 4,
   timeoutMs: 15000,
@@ -590,9 +597,9 @@ function sheetUrl() {
   return u;
 }
 
-async function tryStatic(bust) {
+async function tryStatic(bust, url = CONFIG.staticData) {
   try {
-    const r = await fetchWithTimeout(CONFIG.staticData + (bust ? "?t=" + Date.now() : ""), { cache: "no-store" });
+    const r = await fetchWithTimeout(url + (bust ? "?t=" + Date.now() : ""), { cache: "no-store" });
     if (!r.ok) return null;
     const j = await r.json();
     if (!j || !Array.isArray(j.rows)) return null;
@@ -640,6 +647,17 @@ async function load(force) {
     state.players = st.rows.map(r => normalize(r, st.api?.[r.pid]));
     state.players.forEach((p, i) => { if (!st.api?.[st.rows[i].pid]) p.failed = true; });
     state.stamp = st.generatedAt ? Date.parse(st.generatedAt) : null;
+    // Respaldo de la semana anterior (opcional) para marcar subidas y bajadas de skills.
+    state.prevStamp = null;
+    const pv = await tryStatic(force, CONFIG.prevData);
+    if (myId !== loadId) return;
+    if (pv && pv.api) {
+      state.prevStamp = pv.generatedAt ? Date.parse(pv.generatedAt) : null;
+      for (const p of state.players) {
+        const a = pv.api[p.pid];
+        p.prev = a ? normalize({ n: p.n, name: p.name, pid: p.pid, skills: {} }, a).skills : null;
+      }
+    }
     state.source = "archivo";
     finish();
     return;
@@ -890,7 +908,11 @@ function render() {
       if (c.skill) {
         const v = p.skills?.[c.skill];
         if (!Number.isFinite(v)) return `<td class="sk dim">${!p.loaded && !p.failed ? "…" : "—"}</td>`;
-        return `<td class="sk">${v}</td>`;
+        const before = p.prev?.[c.skill];
+        const mark = Number.isFinite(before) && before !== v
+          ? (v > before ? ` <span class="chg up" title="Subió: antes ${before}" aria-label="subió, antes ${before}">▲</span>` : ` <span class="chg down" title="Bajó: antes ${before}" aria-label="bajó, antes ${before}">▼</span>`)
+          : "";
+        return `<td class="sk">${v}${mark}</td>`;
       }
       if (c.comp) {
         const v = compositeValue(p, c.comp);
@@ -929,7 +951,9 @@ function render() {
   const total = state.players.length;
   const skillCount = state.players.filter(p => SKILL_KEYS.some(k => Number.isFinite(p.skills?.[k]))).length;
   const when = state.stamp ? fmtDate(state.stamp) : "";
-  const stamp = when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "";
+  const prevWhen = state.prevStamp ? fmtDate(state.prevStamp) : "";
+  const stamp = (when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "")
+    + (prevWhen ? ` Flechas ▲▼: cambios respecto al ${prevWhen.replace(/,.*$/, "")}.` : "");
   $("#lede").innerHTML = total
     ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}`
     : "No hay jugadores para mostrar.";

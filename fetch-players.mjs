@@ -1,14 +1,35 @@
 // Genera data/players.json: lee la hoja de Google y consulta la API de Sokker por cada PID.
 // Uso (Node 18 o superior, sin instalar nada):   node fetch-players.mjs
-// Después sube data/players.json al repositorio. La página lo usa sola.
+// Después sube la carpeta data (players.json y players.prev.json) al repositorio. La página lo usa sola.
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, copyFile, stat } from "node:fs/promises";
 
 const SHEET_ID = "1kBi5kAlC7dlmQ3jPi5D1SbtIkNME8KI5SxIG0XRIMWE";
 const SHEET_TAB = "";                         // vacío = primera pestaña
 const API_BASE = "https://sokker.org/api";
 const CONCURRENCY = 3;
 const DELAY_MS = 150;                         // pausa entre llamadas, para no saturar el sitio
+
+// Respaldo semanal para comparar skills. La «semana» empieza el jueves a las 00:00 (hora de este computador).
+// El respaldo (data/players.prev.json) es el players.json de la semana anterior: se renueva solo la primera
+// vez que se ejecuta el script cada jueves y se conserva sin cambios hasta el miércoles siguiente.
+function weekStart(now = new Date()) {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() - 4 + 7) % 7));   // 4 = jueves
+  return d;
+}
+async function rotateBackup(dir = "data", now = new Date()) {
+  const cur = `${dir}/players.json`, prev = `${dir}/players.prev.json`;
+  let when;
+  try {
+    const j = JSON.parse(await readFile(cur, "utf8"));
+    when = j.generatedAt ? new Date(j.generatedAt) : (await stat(cur)).mtime;
+  } catch { return "no hay un players.json anterior: todavía no hay nada que comparar"; }
+  if (!(when < weekStart(now))) return "el players.json actual es de esta misma semana: se conserva el respaldo anterior";
+  await copyFile(cur, prev);
+  return "respaldo renovado: la semana anterior quedó en data/players.prev.json";
+}
 
 function parseCSV(text) {
   const rows = []; let row = [], cell = "", q = false;
@@ -149,6 +170,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 console.log(`Equipos bot: ${Object.values(teams).filter(t => t.bot).length} de ${teamIds.length}.`);
 
 await mkdir("data", { recursive: true });
+console.log("Respaldo semanal: " + await rotateBackup());
 await writeFile("data/players.json", JSON.stringify({ generatedAt: new Date().toISOString(), rows, api, teams }));
 console.log(`Listo: data/players.json (${rows.length - failed} jugadores con datos, ${failed} con error).`);
 
