@@ -61,3 +61,13 @@ Junto al nombre del jugador aparece "Equipo bot" cuando su equipo no tiene dueñ
 - La página compara ambos archivos y marca con ▲ (subió) o ▼ (bajó) las skills que cambiaron. Al pasar el mouse se ve el valor anterior.
 - Sube **los dos archivos** (`players.json` y `players.prev.json`) a la carpeta `data` del repositorio.
 - No se marca nada si el jugador no tenía skills visibles en alguna de las dos semanas, ni si es nuevo en la hoja. La primera comparación aparece después de la segunda ejecución semanal.
+
+## Contraseña de la página
+
+Los datos se publican **cifrados** (`data/players.enc.json` y `data/players.prev.enc.json`). Quien abra la página debe escribir la contraseña; el navegador la recuerda en ese dispositivo, y el botón «Bloquear» la olvida.
+
+- Al ejecutar `node fetch-players.mjs`, el script pide la contraseña de la página (mínimo 8 caracteres, mejor una frase larga). También puedes pasarla con la variable `SITE_PASSWORD`. No se escribe en ningún archivo.
+- Sube a `data` solo los archivos `.enc.json`. **Borra del repositorio** `data/players.json` y `data/players.prev.json` si aún existen: están sin cifrar. Ojo: GitHub conserva el historial, así que lo que ya estuvo publicado sin cifrar sigue siendo recuperable desde commits antiguos.
+- Para cambiar la contraseña, ejecuta el script con la nueva. Esa semana no habrá flechas (el respaldo anterior ya no se puede leer) y quienes tengan la contraseña vieja guardada verán el aviso para escribir la nueva.
+- El cifrado protege los datos, no el código de la página (botones y diseño), que sigue siendo público. Una contraseña corta se puede adivinar por fuerza bruta.
+- `node check-players.mjs` también lee el archivo cifrado, pidiendo la contraseña.

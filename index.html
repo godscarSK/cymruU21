@@ -225,19 +225,19 @@ details.formulas p { max-width: 70ch; color: var(--muted); }
 
 .who { align-self: center; font-size: .9rem; font-weight: 600; padding: 3px 9px; border-radius: 3px; border: 1px solid var(--line); background: var(--panel); }
 
-dialog#dlg {
+dialog.dlg {
   width: min(420px, calc(100vw - 32px)); padding: 22px; border: 2px solid var(--ink); border-radius: 6px;
   background: var(--panel); color: var(--ink);
 }
-dialog#dlg::backdrop { background: rgba(10, 20, 30, .55); }
-dialog#dlg h2 {
+dialog.dlg::backdrop { background: rgba(10, 20, 30, .55); }
+dialog.dlg h2 {
   margin: 0 0 6px; font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 2rem; line-height: 1; font-weight: 700;
 }
-dialog#dlg .hint { margin: 0 0 14px; color: var(--muted); font-size: .92rem; }
-dialog#dlg .field { margin-bottom: 12px; }
-dialog#dlg .field input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-height: 40px; }
-dialog#dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); font-weight: 600; font-size: .92rem; }
-dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
+dialog.dlg .hint { margin: 0 0 14px; color: var(--muted); font-size: .92rem; }
+dialog.dlg .field { margin-bottom: 12px; }
+dialog.dlg .field input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-height: 40px; }
+dialog.dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); font-weight: 600; font-size: .92rem; }
+dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 640px) {
   th.c-name, td.c-name { left: 2.6rem; }
@@ -267,6 +267,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <span class="who" id="who" hidden></span>
     <button class="btn" id="login" type="button">Conectar a Sokker</button>
     <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
+    <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
     <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Mostrar Clubes</button>
     <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
     <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
@@ -319,7 +320,21 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
   </details>
 </div>
 
-<dialog id="dlg" aria-labelledby="dlgTitle">
+<dialog id="pwDlg" class="dlg" aria-labelledby="pwTitle">
+  <form id="pwForm">
+    <h2 id="pwTitle">Página protegida</h2>
+    <p class="hint">Escribe la contraseña para ver los datos. Este navegador la recordará.</p>
+    <label class="field">Contraseña
+      <input id="pwInput" name="password" type="password" autocomplete="current-password" required>
+    </label>
+    <p class="msg" id="pwMsg" role="alert"></p>
+    <div class="actions">
+      <button class="btn primary" id="pwOk" type="submit">Entrar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg" class="dlg" aria-labelledby="dlgTitle">
   <form id="lgForm">
     <h2 id="dlgTitle">Conectar a Sokker</h2>
     <p class="hint">Tu usuario y tu contraseña se envían directo a sokker.org. Esta página no los guarda. Con la sesión iniciada se ven las skills de tus propios jugadores y de los que están en venta.</p>
@@ -349,7 +364,9 @@ const CONFIG = {
   sheetTab: "",                       // nombre de la pestaña; vacío = la primera
   apiBase: "https://sokker.org/api",
   staticData: "data/players.json",
-  prevData: "data/players.prev.json",   // respaldo de la semana anterior (opcional)    // si existe, se usa en vez de llamar a la API desde el navegador
+  prevData: "data/players.prev.json",
+  encData: "data/players.enc.json",            // datos cifrados con la contraseña de la página
+  encPrevData: "data/players.prev.enc.json",   // respaldo de la semana anterior (opcional)
   cacheHours: 6,
   concurrency: 4,
   timeoutMs: 15000,
@@ -631,6 +648,52 @@ async function tryStatic(bust, url = CONFIG.staticData) {
   } catch { return null; }
 }
 
+/* ─────────────── Datos cifrados ─────────────── */
+const PW_KEY = "cantera:pw";
+const b64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+async function fetchEnvelope(url, bust) {
+  try {
+    const r = await fetchWithTimeout(url + (bust ? "?t=" + Date.now() : ""), { cache: "no-store" });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.data && j.salt && j.iv ? j : null;
+  } catch { return null; }
+}
+async function decryptEnvelope(env, pw) {
+  const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(String(pw).normalize("NFC")), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256" },
+    km, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  let buf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(env.iv) }, key, b64(env.data));
+  if (env.z) buf = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+const savedPw = () => { try { return localStorage.getItem(PW_KEY) || ""; } catch { return ""; } };
+const savePw = pw => { try { localStorage.setItem(PW_KEY, pw); } catch {} };
+const forgetPw = () => { try { localStorage.removeItem(PW_KEY); } catch {} };
+function askPassword(msg) {
+  const dlg = $("#pwDlg");
+  $("#pwMsg").textContent = msg || "";
+  $("#pwInput").value = "";
+  if (!dlg.open) dlg.showModal();
+  $("#pwInput").focus();
+  return new Promise(res => { dlg._res = res; });
+}
+// Devuelve { data, pw } con los datos descifrados, o null si la carga se canceló.
+async function unlock(env, myId) {
+  let pw = savedPw(), msg = "";
+  for (;;) {
+    if (!pw) { setStatus("Datos protegidos con contraseña."); pw = await askPassword(msg); if (myId !== loadId) return null; }
+    try {
+      const data = await decryptEnvelope(env, pw);
+      savePw(pw);
+      if ($("#pwDlg").open) $("#pwDlg").close();
+      return { data, pw };
+    } catch {
+      forgetPw(); pw = ""; msg = "Contraseña incorrecta. Inténtalo de nuevo.";
+    }
+  }
+}
+
 function setStatus(text, progress) {
   const el = $("#status");
   el.textContent = text || "";
@@ -663,9 +726,19 @@ async function load(force) {
   setNotices([]);
   setStatus("Cargando jugadores…");
 
-  // 1) Datos generados de antemano (data/players.json): no dependen de CORS.
-  const st = await tryStatic(force);
+  // 1) Datos generados de antemano: cifrados (data/players.enc.json) o, si no existen, sin cifrar (data/players.json).
+  let st = null, pwUsed = null;
+  const env = await fetchEnvelope(CONFIG.encData, force);
   if (myId !== loadId) return;
+  if (env) {
+    const u = await unlock(env, myId);
+    if (!u) return;
+    st = u.data; pwUsed = u.pw;
+  } else {
+    st = await tryStatic(force);
+    if (myId !== loadId) return;
+  }
+  $("#forgetPw").hidden = !env;
   if (st) {
     for (const [id, v] of Object.entries(st.teams || {})) TEAM_BOT.set(String(id), !!v.bot);
     state.players = st.rows.map(r => normalize(r, st.api?.[r.pid]));
@@ -673,7 +746,13 @@ async function load(force) {
     state.stamp = st.generatedAt ? Date.parse(st.generatedAt) : null;
     // Respaldo de la semana anterior (opcional) para marcar subidas y bajadas de skills.
     state.prevStamp = null;
-    const pv = await tryStatic(force, CONFIG.prevData);
+    let pv = null;
+    if (env) {
+      const penv = await fetchEnvelope(CONFIG.encPrevData, force);
+      try { pv = penv ? await decryptEnvelope(penv, pwUsed) : null; } catch { pv = null; }
+    } else {
+      pv = await tryStatic(force, CONFIG.prevData);
+    }
     if (myId !== loadId) return;
     if (pv && pv.api) {
       state.prevStamp = pv.generatedAt ? Date.parse(pv.generatedAt) : null;
@@ -1120,6 +1199,15 @@ function init() {
   });
   $("#login").addEventListener("click", openLogin);
   $("#logout").addEventListener("click", logout);
+  $("#pwForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const pw = $("#pwInput").value;
+    const dlg = $("#pwDlg"), res = dlg._res; dlg._res = null;
+    $("#pwInput").value = "";
+    if (res) res(pw);
+  });
+  $("#pwDlg").addEventListener("cancel", ev => ev.preventDefault());   // no se puede cerrar sin contraseña
+  $("#forgetPw").addEventListener("click", () => { forgetPw(); location.reload(); });
   $("#lgForm").addEventListener("submit", submitLogin);
   $("#lgCancel").addEventListener("click", () => { $("#lgPass").value = ""; $("#dlg").close(); });
   render();
