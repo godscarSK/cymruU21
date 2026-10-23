@@ -265,6 +265,7 @@ dialog#dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
     <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Mostrar Clubes</button>
     <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
+    <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
     <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Skills Ocultas</button>
     <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
   </section>
@@ -581,7 +582,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], showTeam: false, onlyBot: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], showTeam: false, onlyBot: false, onlyInjured: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -798,6 +799,7 @@ function visibleRows() {
     if (q && !(`${p.name} ${state.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
     if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
     if (state.onlyBot && !isBot(p)) return false;
+    if (state.onlyInjured && !p.injury) return false;
     const hs = hasSkills(p.skills);
     if (state.skills === "visible" && !hs) return false;
     if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
@@ -917,7 +919,7 @@ function render() {
   $("#body").innerHTML = rows.length ? rows.map(p => {
     const tds = COLS.map(c => {
       if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Equipo bot</span>` : ""}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
@@ -1085,6 +1087,11 @@ function init() {
   });
   $("#withForm").addEventListener("change", e => { state.withForm = e.target.checked; render(); });
   $("#copy").addEventListener("click", copyTable);
+  $("#onlyInjured").addEventListener("click", e => {
+    state.onlyInjured = !state.onlyInjured;
+    e.currentTarget.setAttribute("aria-pressed", String(state.onlyInjured));
+    render();
+  });
   $("#onlyHidden").addEventListener("click", e => {
     state.skills = state.skills === "hidden" ? "all" : "hidden";
     e.currentTarget.setAttribute("aria-pressed", String(state.skills === "hidden"));
