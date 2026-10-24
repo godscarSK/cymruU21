@@ -90,6 +90,8 @@ h1 .mark { color: var(--accent); }
   display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end;
   padding: 14px 0 12px; border-top: 2px solid var(--ink);
 }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; justify-content: flex-end; align-items: center; }
+.actions .btn { min-width: 3.6rem; text-align: center; }
 .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.875rem; color: var(--muted); }
 .field input[type="search"], .field input[type="number"], .field select {
   font: inherit; color: var(--ink); background: var(--panel);
@@ -152,13 +154,12 @@ td.c-name { text-align: left; }
 tbody tr:nth-child(even) td { background-color: var(--zebra); }
 tbody tr:hover td { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
-th.c-n, td.c-n { position: sticky; left: 0; width: 3.2rem; min-width: 3.2rem; color: var(--muted); z-index: 1; background: var(--panel); }
-th.c-n { z-index: 3; background: var(--head-bg); }
-th.c-est, td.c-est { position: sticky; left: 3.2rem; width: 5.6rem; min-width: 5.6rem; z-index: 1; background: var(--panel); padding-left: 4px; padding-right: 4px; }
-th.c-est { z-index: 3; background: var(--head-bg); }
-th.c-name, td.c-name { position: sticky; left: 8.8rem; z-index: 1; background: var(--panel); border-right: 1px solid var(--line); }
-th.c-name { z-index: 3; background: var(--head-bg); }
-tbody tr:hover td.c-n, tbody tr:hover td.c-name { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+th.c-n, td.c-n { width: 3.2rem; min-width: 3.2rem; color: var(--muted); }
+th.c-est, td.c-est { width: 5.6rem; min-width: 5.6rem; padding-left: 4px; padding-right: 4px; }
+/* Columnas inmovilizadas (# … Forma): la posición la calcula applyFreeze() según el ancho real de cada columna. */
+td.frz { position: sticky; z-index: 1; background-color: var(--panel); }
+th.frz { z-index: 3; background: var(--head-bg); }
+.frz-last { box-shadow: 3px 0 4px -2px rgba(0,0,0,.25); border-right: 1px solid var(--line); }
 
 td.c-name a { color: var(--ink); font-weight: 600; text-decoration-color: var(--line); text-underline-offset: 3px; }
 td.c-name a:hover { text-decoration-color: var(--accent); }
@@ -262,8 +263,6 @@ dialog.dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); fon
 dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 640px) {
-  th.c-est, td.c-est { left: 2.6rem; }
-  th.c-name, td.c-name { left: 8.2rem; }
   th.c-n, td.c-n { width: 2.6rem; min-width: 2.6rem; padding-left: 6px; padding-right: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .progress > i { transition: none; } }
@@ -290,17 +289,18 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <span class="ages poss" id="poss"></span>
     </div>
     <label class="check" id="formToggle"><input type="checkbox" id="withForm"> Con forma</label>
-    <span class="spacer"></span>
-    <span class="who" id="who" hidden></span>
-    <button class="btn" id="login" type="button">Conectar a Sokker</button>
-    <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
-    <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
-    <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Mostrar Clubes</button>
-    <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">Equipos Bots</button>
-    <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
-    <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
-    <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
-    <button class="btn primary" id="copy" type="button">Copiar para planilla</button>
+    <div class="actions" role="group" aria-label="Acciones y filtros">
+      <span class="who" id="who" hidden></span>
+      <button class="btn" id="login" type="button">Conectar a Sokker</button>
+      <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
+      <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
+      <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Clubes</button>
+      <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
+      <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
+      <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
+      <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
+      <button class="btn primary" id="copy" type="button" title="Copiar la tabla visible para pegarla en una planilla">CSV</button>
+    </div>
   </section>
 
   <div id="status" role="status" aria-live="polite"></div>
@@ -450,7 +450,7 @@ function compositeValue(p, c) {
 }
 
 const COLS = [
-  { key: "n",        label: "#",                 cls: "c-n", left: true },
+  { key: "n",        label: "#",                 cls: "c-n", left: true, title: "Número de fila. Al pulsarlo vuelves al orden de la hoja." },
   { key: "est",      label: "Pos.",              cls: "c-est", title: "Tu asignación para cada jugador: GK, DEF, MID o ATT" },
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
   { key: "team",     label: "Club", cls: "c-team" },
@@ -1209,6 +1209,29 @@ function loadPrefs() {
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
 
+const FREEZE_KEYS = ["n", "est", "name", "team", "age", "value", "form"];
+function applyFreeze() {
+  const wrap = document.querySelector(".tablewrap");
+  document.querySelectorAll(".frz").forEach(el => { el.classList.remove("frz", "frz-last"); el.style.left = ""; });
+  if (!wrap || document.querySelector("#body td.empty")) return;
+  const ths = FREEZE_KEYS.map(k => document.querySelector(`#head th[data-key="${k}"]`)).filter(th => th && th.offsetWidth > 0);
+  const limit = (wrap.clientWidth || window.innerWidth) * 0.7;   // en pantallas angostas se inmovilizan menos columnas
+  let left = 0;
+  const chosen = [];
+  ths.forEach((th, i) => {
+    const w = th.getBoundingClientRect().width;
+    if (i < 3 || left + w <= limit) { chosen.push([th, left]); left += w; }
+  });
+  chosen.forEach(([th, l], idx) => {
+    const last = idx === chosen.length - 1;
+    const col = COLS.findIndex(c => c.key === th.dataset.key);
+    const cells = [th, ...document.querySelectorAll(`#body tr td:nth-child(${col + 1})`)];
+    for (const el of cells) { el.classList.add("frz"); if (last) el.classList.add("frz-last"); el.style.left = l + "px"; }
+  });
+}
+window.addEventListener("resize", () => applyFreeze());
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => applyFreeze());
+
 function render() {
   savePrefs();
   updateSessionUI();
@@ -1217,9 +1240,9 @@ function render() {
   for (const pos of POSITIONS) maxBy[pos.key] = Math.max(0, ...rows.map(p => p.sc ? p.sc[pos.key] : 0));
   for (const c of COMPOSITES) maxBy[c.key] = Math.max(0, ...rows.map(p => compositeValue(p, c) ?? 0));
 
-  $("#body").innerHTML = rows.length ? rows.map(p => {
+  $("#body").innerHTML = rows.length ? rows.map((p, rowIdx) => {
     const tds = COLS.map(c => {
-      if (c.key === "n") return `<td class="c-n">${p.n}</td>`;
+      if (c.key === "n") return `<td class="c-n">${rowIdx + 1}</td>`;
       if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
       if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "injury") {
@@ -1257,6 +1280,8 @@ function render() {
     tr.children[TEAM_IDX]?.classList.add("c-team");
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
+
+  applyFreeze();
 
   // Al ordenar por DEF, DEFside, MID, ATT o ATTside se resaltan las skills que entran en esa suma; Suma solo se resalta a sí misma.
   const act = compOf(state.sort.key);
@@ -1314,7 +1339,7 @@ async function copyTable() {
   const lines = [head.join("\t")];
   for (const p of rows) {
     lines.push(cols.map(c => {
-      if (c.key === "n") return p.n;
+      if (c.key === "n") return rows.indexOf(p) + 1;
       if (c.key === "name") return p.name || p.pid;
       return cellText(p, c.key).replace(/\t|\n/g, " ");
     }).join("\t"));

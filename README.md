@@ -90,3 +90,8 @@ Cómo funciona y qué tener en cuenta:
 - Si cambias el código del Apps Script, hay que crear una **nueva implementación** (o administrar la actual y elegir «Nueva versión»); la URL no cambia si editas la implementación existente.
 
 **Si la página muestra «Motivo: el navegador no pudo conectar con el servicio»** aunque la URL abra bien en una ventana privada: el navegador está bloqueando la lectura entre sitios. La página ya lo intenta de otra forma (JSONP), pero necesita la versión actual de `est-sync.gs`: pégala de nuevo en Apps Script (reemplazando todo), guarda, y en **Implementar → Administrar implementaciones → ✏️ → Versión: Nueva versión → Implementar**. La URL no cambia.
+
+## Tabla
+- La columna **#** es solo la posición en la vista actual (siempre 1, 2, 3…, aunque ordenes o filtres). Pulsar su encabezado vuelve al orden de la hoja.
+- Al hacer scroll horizontal quedan inmovilizadas las columnas hasta **Forma** (en pantallas angostas se inmovilizan menos).
+- **CSV** copia la tabla visible como texto separado por tabulaciones, para pegar en una planilla.
