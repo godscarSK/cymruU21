@@ -93,5 +93,6 @@ Cómo funciona y qué tener en cuenta:
 
 ## Tabla
 - La columna **#** es solo la posición en la vista actual (siempre 1, 2, 3…, aunque ordenes o filtres). Pulsar su encabezado vuelve al orden de la hoja.
-- Al hacer scroll horizontal quedan inmovilizadas las columnas hasta **Forma** (en pantallas angostas se inmovilizan menos).
+- Al hacer scroll horizontal quedan inmovilizadas las columnas hasta **Forma** y **Cond.** (en pantallas angostas se inmovilizan menos).
 - **CSV** copia la tabla visible como texto separado por tabulaciones, para pegar en una planilla.
+- **Ocultar Valor** oculta la columna Valor (queda recordado en cada dispositivo).

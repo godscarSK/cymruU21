@@ -207,6 +207,7 @@ td.c-name .copypid svg { width: 14px; height: 14px; }
 td.pos { min-width: 3rem; }
 td.sk { min-width: 2.4rem; }
 table.no-team .c-team { display: none; }
+table.no-val .c-val { display: none; }
 td.c-team { white-space: nowrap; }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
@@ -294,6 +295,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <button class="btn" id="login" type="button">Conectar a Sokker</button>
       <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
       <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
+      <button class="btn" id="hideVal" type="button" aria-pressed="false" title="Ocultar o mostrar la columna Valor">Ocultar Valor</button>
       <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Clubes</button>
       <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
@@ -455,7 +457,7 @@ const COLS = [
   { key: "name",     label: "Jugador",           cls: "c-name", left: true },
   { key: "team",     label: "Club", cls: "c-team" },
   { key: "age",      label: "Edad" },
-  { key: "value",    label: "Valor" },
+  { key: "value",    label: "Valor", cls: "c-val" },
   { key: "form",     label: "Forma" },
   ...SKILL_COLUMNS.map(s => ({ key: "sk_" + s.skill, label: s.label, title: s.title, skill: s.skill })),
   { key: "c_sum", label: "Suma", title: "Suma de las 8 skills", comp: SUM_COMP },
@@ -463,6 +465,7 @@ const COLS = [
   ...(CONFIG.showPositions ? POSITIONS.map(p => ({ key: p.key, label: p.label, pos: true })) : [])
 ];
 const TEAM_IDX = COLS.findIndex(c => c.key === "team");
+const VAL_IDX = COLS.findIndex(c => c.key === "value");
 
 const SKILL_KEYS = ["stamina", "pace", "technique", "passing", "keeper", "defender", "playmaker", "striker"];
 const REQUIRED_SKILLS = ["keeper", "pace", "passing", "defender", "technique", "playmaker", "striker"];
@@ -634,7 +637,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1184,7 +1187,7 @@ function savePrefs() {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify({
       ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp,
-      hidden: state.skills === "hidden", clubs: state.showTeam, sort: state.sort
+      hidden: state.skills === "hidden", clubs: state.showTeam, hideVal: state.hideVal, sort: state.sort
     }));
   } catch {}
 }
@@ -1201,6 +1204,7 @@ function loadPrefs() {
   state.skills = p.hidden === true ? "hidden" : "all";
   if (p.sort && COLS.some(c => c.key === p.sort.key) && (p.sort.dir === 1 || p.sort.dir === -1)) state.sort = { key: p.sort.key, dir: p.sort.dir };
   if (!CONFIG.showTeam && typeof p.clubs === "boolean") setClubs(p.clubs);
+  if (p.hideVal === true) setHideVal(true);
   // Sincroniza el aspecto de los botones con lo recuperado.
   const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
   press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
@@ -1209,13 +1213,13 @@ function loadPrefs() {
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
 
-const FREEZE_KEYS = ["n", "est", "name", "team", "age", "value", "form"];
+const FREEZE_KEYS = ["n", "est", "name", "team", "age", "value", "form", "sk_stamina"];
 function applyFreeze() {
   const wrap = document.querySelector(".tablewrap");
   document.querySelectorAll(".frz").forEach(el => { el.classList.remove("frz", "frz-last"); el.style.left = ""; });
   if (!wrap || document.querySelector("#body td.empty")) return;
   const ths = FREEZE_KEYS.map(k => document.querySelector(`#head th[data-key="${k}"]`)).filter(th => th && th.offsetWidth > 0);
-  const limit = (wrap.clientWidth || window.innerWidth) * 0.7;   // en pantallas angostas se inmovilizan menos columnas
+  const limit = (wrap.clientWidth || window.innerWidth) * 0.8;   // en pantallas angostas se inmovilizan menos columnas
   let left = 0;
   const chosen = [];
   ths.forEach((th, i) => {
@@ -1278,6 +1282,7 @@ function render() {
 
   if (rows.length) document.querySelectorAll("#body tr").forEach(tr => {
     tr.children[TEAM_IDX]?.classList.add("c-team");
+    tr.children[VAL_IDX]?.classList.add("c-val");
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
 
@@ -1306,6 +1311,13 @@ function render() {
     : "No hay jugadores para mostrar.";
 }
 
+function setHideVal(on) {
+  state.hideVal = on;
+  document.querySelector("table").classList.toggle("no-val", on);
+  const b = $("#hideVal");
+  b.setAttribute("aria-pressed", String(on));
+  b.textContent = on ? "Mostrar Valor" : "Ocultar Valor";
+}
 function setClubs(on) {
   state.showTeam = on;
   document.querySelector("table").classList.toggle("no-team", !on);
@@ -1446,6 +1458,7 @@ function init() {
   $("#body").addEventListener("click", e => {
     const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
   });
+  $("#hideVal").addEventListener("click", () => { setHideVal(!state.hideVal); render(); });
   $("#showClubs").addEventListener("click", () => { setClubs(!state.showTeam); render(); });
   $("#onlyBot").addEventListener("click", e => {
     state.onlyBot = !state.onlyBot;
