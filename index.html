@@ -82,6 +82,8 @@ h1 {
   line-height: 0.9;
   letter-spacing: -0.01em;
 }
+.brand { display: flex; align-items: center; gap: clamp(10px, 2vw, 20px); }
+.brand .logo { height: clamp(3rem, 9vw, 5.5rem); width: auto; flex: none; }
 h1 .mark { color: var(--accent); }
 .lede { margin: 10px 0 0; color: var(--muted); max-width: 60ch; }
 .lede strong { color: var(--ink); font-weight: 600; }
@@ -273,7 +275,10 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 <div class="wrap">
   <button class="theme" id="theme" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"></button>
   <header class="top">
-    <h1 id="title">CYMRU U21</h1>
+    <div class="brand">
+      <img class="logo" src="logo.png" alt="" width="227" height="260">
+      <h1 id="title">CYMRU U21</h1>
+    </div>
     <p class="lede" id="lede">Cargando jugadores…</p>
   </header>
 
