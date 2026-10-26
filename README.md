@@ -1,98 +1,100 @@
-# Cantera
+# Mi equipo
 
-Tabla de jugadores con buscador, filtros, orden por columna y cálculo de posiciones. Es una página estática: un solo `index.html`.
+Página con la tabla de **los jugadores de tu propio equipo en Sokker**. Es una página estática (un solo `index.html`) publicada en GitHub Pages. Los datos se generan en tu computador con un script y se publican **cifrados**.
 
-## De dónde salen los datos
+## Archivos
 
-- **La lista de jugadores** sale de una hoja de Google Sheets (columna `PID`). Debe estar compartida como «Cualquier persona con el enlace puede ver».
-- **Los datos de cada jugador** salen de la API de Sokker (`/api/player/{PID}`): nombre, edad, equipo, valor, forma, disciplina táctica, trabajo en equipo, experiencia y lesión.
-- **Las skills** (resistencia, rapidez, técnica, pase, portero, defensa, creación, anotación) la API no las entrega para jugadores de otros equipos. Si las agregas a la hoja en columnas llamadas `RES`, `RAP`, `TEC`, `PAS`, `POR`, `DEF`, `CRE` y `ANO`, la página calcula las posiciones.
+- `index.html`: la página del plantel.
+- `juveniles.html`: la página de juveniles.
+- `logo.png`: el escudo que se muestra junto al título (opcional: si falta, la página se ve igual, sin escudo).
+- `config.js`: configuración propia (dirección del servicio que sincroniza la columna «Pos.» entre dispositivos). No hace falta tocarlo al actualizar `index.html`.
+- `fetch-team.mjs`: script que se ejecuta en tu computador, inicia sesión en Sokker y genera los datos.
+- `data/team.enc.json` y `data/team.prev.enc.json`: los datos cifrados del plantel (los crea el script).
+- `data/juniors.enc.json`: los datos cifrados de los juveniles (los crea el script).
 
-## Publicar en GitHub Pages
-
-1. Crea un repositorio en GitHub y sube `index.html` (y, si lo generas, la carpeta `data/`).
-2. En el repositorio: Settings → Pages → «Deploy from a branch» → rama `main`, carpeta `/ (root)`.
-3. En uno o dos minutos la página queda en `https://TU_USUARIO.github.io/NOMBRE_DEL_REPO/`.
-
-## Si el navegador no puede leer la API de Sokker
-
-Si la página muestra «El navegador no pudo leer la API de Sokker», es un bloqueo CORS. Se resuelve generando los datos fuera del navegador:
+## Puesta en marcha
 
 1. Instala Node 18 o superior.
-2. En esta carpeta, ejecuta `node fetch-players.mjs`. Crea `data/players.json`.
-3. Sube `data/players.json` al repositorio.
+2. En la carpeta del proyecto ejecuta `node fetch-team.mjs`. Te pide tu usuario de Sokker, tu contraseña de Sokker y la contraseña de la página (mínimo 8 caracteres, mejor una frase larga). Ninguna se guarda en un archivo.
+   - También puedes pasarlas solo para esa ejecución. Mac o Linux: `SOKKER_USER="..." SOKKER_PASS="..." SITE_PASSWORD="..." node fetch-team.mjs`. En PowerShell: `$env:SOKKER_USER="..."; $env:SOKKER_PASS="..."; $env:SITE_PASSWORD="..."; node fetch-team.mjs`.
+   - Si el script no encuentra el ID de tu equipo, agrega la variable `SOKKER_TEAM_ID` con tu ID de equipo.
+3. Sube a la carpeta `data` del repositorio `team.enc.json`, `juniors.enc.json` (y `team.prev.enc.json` si existe).
+4. En el repositorio: Settings → Pages → «Deploy from a branch» → rama `main`, carpeta `/ (root)`. La página queda en `https://TU_USUARIO.github.io/NOMBRE_DEL_REPO/`.
 
-Mientras exista ese archivo, la página lo usa y no llama a la API. Para actualizarlo, repite los pasos 2 y 3.
+Para actualizar los datos, repite los pasos 2 y 3.
 
-## Conectar con tu usuario de Sokker
+## Menú de secciones
 
-El botón «Conectar a Sokker» abre un cuadro para escribir tu usuario y tu contraseña. Se envían directo a `sokker.org`; la página no los guarda. Con la sesión iniciada, la API entrega las skills de tus propios jugadores y de los que están en venta (no las de otros equipos).
+Arriba a la derecha, junto al botón de tema, hay un menú desplegable con dos opciones: **Plantel** (`index.html`) y **Juveniles** (`juveniles.html`). La contraseña se escribe una sola vez: las dos páginas la comparten en el mismo navegador.
 
-Dos cosas pueden impedirlo:
+## Qué muestra el plantel
 
-- Los campos del login están en `CONFIG.loginFields` (`login` y `password`) y `CONFIG.loginExtra` (`remember: false`, es decir, no recordar la sesión). Deben coincidir con `LoginRequest` en https://sokker.org/apidoc.html, sección Schemas. Si Sokker responde que no acepta los datos, revísalos ahí.
-- Los navegadores suelen bloquear las cookies de otro sitio. Si Sokker acepta el login pero la página no mantiene la sesión, usa el script.
+- Las 8 skills de cada jugador (la API las entrega completas porque son tus jugadores y el script inicia sesión con tu usuario), más **Suma**, **DEF**, **DEFside**, **MID**, **ATT** y **ATTside** (sumas simples de skills; si falta alguna, la celda muestra «—»).
+- Edad, **Valor**, **Salario** (a la derecha de Valor) y forma.
+- Junto al nombre: insignia **SEL** si el jugador está citado a la selección, cruz roja con los días restantes si está lesionado, y una **tarjeta roja** si está suspendido (campo `stats.cards.red`, la suspensión actual).
+- Flechas ▲▼ en las skills que cambiaron respecto a la semana anterior.
 
-**Con el script** (no depende del navegador). Con tu usuario y contraseña en variables de entorno, solo para esa ejecución:
+### Filtros y botones
 
-- Windows (PowerShell): `$env:SOKKER_USER="tu_usuario"; $env:SOKKER_PASS="tu_contraseña"; node fetch-players.mjs`
-- Mac o Linux: `SOKKER_USER="tu_usuario" SOKKER_PASS="tu_contraseña" node fetch-players.mjs`
+- Búsqueda por nombre o PID, rango de edad (mín. y máx.), botones por posición asignada, **Lesionados**, **Suspendidos** y **Selección**.
+- **Ocultar Val/Sal** oculta las columnas Valor y Salario (queda recordado en cada dispositivo).
+- **CSV** copia la tabla visible como texto separado por tabulaciones, para pegar en una planilla.
+- El botón redondo de la esquina cambia entre modo claro y oscuro.
+- Al hacer scroll horizontal quedan inmovilizadas las primeras columnas (en pantallas angostas, menos).
 
-El `data/players.json` que genera incluye lo que tu sesión puede ver. Si lo subes a un repositorio público, esos datos quedan públicos. Nunca subas tu contraseña.
+### Cuadro de resumen (esquina superior derecha)
 
-## Configuración
+Se muestra siempre y cuenta a todo el equipo, sin importar los filtros ni los botones:
 
-Todo está al inicio del `<script>` de `index.html`, en `CONFIG`: título, ID de la hoja, nombre de la pestaña, tiempo de caché y concurrencia. El script `fetch-players.mjs` tiene su propio `SHEET_ID` al inicio.
+- **Finanzas**: dinero disponible en tu cuenta.
+- **Valor Total** y **Salario Total**: suma de todos los jugadores.
+- **Edad Titulares**: promedio de edad de los marcados GK, DEF, MID y ATT (todos juntos).
+- **Edad Entrenables**: promedio de edad de los marcados ENT.
+- **Lesionados** y **Suspendidos**: cantidad de jugadores.
 
-## Columnas y botón de tema
+Finanzas y Salario dependen de los nombres de campo que entregue la API de Sokker. Al pasar el mouse sobre la cifra de Finanzas se ve qué campo se usó y cuáles otros se encontraron. Si la fila queda en «—», la página muestra un aviso con los nombres de los campos disponibles.
 
-- Después de las 8 skills hay 5 columnas de suma: **DEF** (defensa + rapidez), **DEFside** (creación + técnica + pase), **MID** (creación + rapidez + técnica + pase), **ATT** (rapidez + técnica + anotación) y **ATTside** (defensa + creación + pase). Si falta alguna skill del jugador, muestran "—".
-- El botón redondo de la esquina superior derecha cambia entre modo claro y oscuro y recuerda tu elección. Si nunca lo usas, sigue el modo de tu sistema.
-- Las columnas "Equipo" y las 7 de posiciones (Portero… Delantero) están ocultas. Para verlas, agrega al final de la dirección `?equipo=1` y/o `?posiciones=1` (por ejemplo `.../index.html?equipo=1&posiciones=1`).
+## Página de juveniles
 
-## Equipos bot
+Tabla con los juveniles de la academia del equipo: nombre, edad, **Sem.** (semanas que le faltan; «Listo» cuando terminó la academia y puede ascender), las 8 skills y la Suma. Se puede buscar por nombre, filtrar por rango de edad, ordenar por cualquier columna y copiar como CSV.
 
-Junto al nombre del jugador aparece "Equipo bot" cuando su equipo no tiene dueño. Se detecta con `GET /team/{id}/owner` (404 = sin dueño). `node fetch-players.mjs` lo guarda en `data/players.json` (clave `teams`), así que hay que volver a ejecutarlo para que aparezcan las etiquetas.
+La API entrega los datos de los juveniles bajo nombres de campo que la página busca de forma flexible. Si no encuentra skills, edad o semanas, muestra un aviso con los nombres de los campos disponibles, para poder ajustarla. Para actualizar esta página hay que volver a ejecutar `node fetch-team.mjs` y subir `data/juniors.enc.json`.
+
+## Columna «Pos.»
+
+Cada jugador tiene una lista con las opciones **GK**, **DEF**, **MID**, **ATT**, **ENT** (entrenables) y **EXT**, cada una con su botón de filtro. La asignación se guarda en el navegador y, si configuraste el servicio de sincronización, también se comparte entre tus dispositivos.
 
 ## Cambios semanales (flechas ▲▼)
 
-- Cada vez que ejecutas `node fetch-players.mjs`, el script guarda además `data/players.prev.json`: el `players.json` de la semana anterior.
-- La semana va de **jueves a miércoles**. El respaldo se renueva solo la primera vez que ejecutas el script cada jueves, y se conserva sin cambios hasta el miércoles siguiente. Puedes ejecutarlo varias veces en la semana sin perder la comparación.
-- La página compara ambos archivos y marca con ▲ (subió) o ▼ (bajó) las skills que cambiaron. Al pasar el mouse se ve el valor anterior.
-- Sube **los dos archivos** (`players.json` y `players.prev.json`) a la carpeta `data` del repositorio.
-- No se marca nada si el jugador no tenía skills visibles en alguna de las dos semanas, ni si es nuevo en la hoja. La primera comparación aparece después de la segunda ejecución semanal.
+La semana va de **jueves a miércoles**. El primer día que ejecutas el script en cada semana, la versión anterior pasa a `team.prev.enc.json`, y la página compara ambos archivos. Puedes ejecutar el script varias veces en la semana sin perder la comparación. La primera comparación aparece después de la segunda semana de ejecuciones. Sube **los dos archivos** a la carpeta `data`.
 
 ## Contraseña de la página
 
-Los datos se publican **cifrados** (`data/players.enc.json` y `data/players.prev.enc.json`). Quien abra la página debe escribir la contraseña; el navegador la recuerda en ese dispositivo, y el botón «Bloquear» la olvida.
+Los datos se publican **cifrados**. Quien abra la página debe escribir la contraseña; el navegador la recuerda en ese dispositivo y el botón **Bloquear** la olvida.
 
-- Al ejecutar `node fetch-players.mjs`, el script pide la contraseña de la página (mínimo 8 caracteres, mejor una frase larga). También puedes pasarla con la variable `SITE_PASSWORD`. No se escribe en ningún archivo.
-- Sube a `data` solo los archivos `.enc.json`. **Borra del repositorio** `data/players.json` y `data/players.prev.json` si aún existen: están sin cifrar. Ojo: GitHub conserva el historial, así que lo que ya estuvo publicado sin cifrar sigue siendo recuperable desde commits antiguos.
-- Para cambiar la contraseña, ejecuta el script con la nueva. Esa semana no habrá flechas (el respaldo anterior ya no se puede leer) y quienes tengan la contraseña vieja guardada verán el aviso para escribir la nueva.
-- El cifrado protege los datos, no el código de la página (botones y diseño), que sigue siendo público. Una contraseña corta se puede adivinar por fuerza bruta.
-- `node check-players.mjs` también lee el archivo cifrado, pidiendo la contraseña.
+- Para cambiarla, ejecuta `node fetch-team.mjs` con la nueva y sube el archivo. Esa semana no habrá flechas ▲▼ (el respaldo anterior ya no se puede leer) y los dispositivos que tengan la contraseña vieja guardada pedirán la nueva.
+- Sube solo archivos `.enc.json`. GitHub conserva el historial: lo que alguna vez se publicó sin cifrar sigue siendo recuperable desde commits antiguos.
+- El cifrado protege los datos, no el código de la página. Una contraseña corta se puede adivinar por fuerza bruta.
 
-## Compartir las asignaciones (GK / DEF / MID / ATT) entre dispositivos
+## Sincronizar las asignaciones entre dispositivos
 
-Sin configurar nada, las asignaciones de la columna «Pos.» se guardan solo en el navegador donde las haces. Para compartirlas entre tus dispositivos se usa un pequeño servicio en tu propia hoja de Google (una sola vez):
+Sin configurar nada, las asignaciones de «Pos.» se guardan solo en el navegador donde las haces. Para compartirlas se usa un pequeño servicio de Google Apps Script en tu hoja de Google (una sola vez):
 
-1. Abre tu hoja de Google → **Extensiones → Apps Script**.
-2. Borra lo que haya y pega todo el contenido de `est-sync.gs`. Guarda (icono del disquete).
-3. Arriba a la derecha: **Implementar → Nueva implementación → ⚙ → Aplicación web**. Configura *Ejecutar como*: **Yo**, y *Quién tiene acceso*: **Cualquier persona**. Pulsa **Implementar**.
-4. Google pedirá autorización: elige tu cuenta → «Configuración avanzada» → «Ir a (nombre del proyecto)» → **Permitir**. Es tu propio script; solo necesita acceso a esta hoja.
-5. Copia la **URL de la aplicación web** (termina en `/exec`) y pégala en el archivo **`config.js`**, entre las comillas de `estUrl: ""`. Sube `config.js` al repositorio, junto a `index.html`. Ese archivo es solo tuyo: al actualizar `index.html` no hace falta tocarlo.
+1. Abre tu hoja de Google → **Extensiones → Apps Script**. Borra lo que haya y pega el contenido de `est-sync.gs`. Guarda.
+2. **Implementar → Nueva implementación → Aplicación web**. *Ejecutar como*: **Yo**; *Quién tiene acceso*: **Cualquier persona**. Autoriza cuando Google lo pida.
+3. Copia la **URL de la aplicación web** (termina en `/exec`) y pégala en `config.js`, en `estUrl`. Sube `config.js` al repositorio, junto a `index.html`.
 
-Cómo funciona y qué tener en cuenta:
-- Los valores viajan **cifrados** con la contraseña de la página: Google y quien conozca la dirección del servicio no pueden leerlos. Se guardan en una pestaña nueva llamada `EST` de tu hoja (no afecta a la primera pestaña, que es la que lee la página).
-- Cada cambio se guarda en el dispositivo al instante y se envía al servicio. Si no hay conexión, queda pendiente y se envía cuando vuelva. Al abrir la página o volver a la pestaña, se traen los cambios hechos en otros dispositivos. Si dos dispositivos cambian al mismo jugador, gana el cambio más reciente.
+Qué tener en cuenta:
+
+- Los valores viajan **cifrados** con la contraseña de la página y se guardan en una pestaña `EST` de tu hoja.
+- Usa **la misma contraseña** de página en todas las páginas que compartan el servicio: la clave de escritura se fija la primera vez que se guarda algo. Si cambias la contraseña, ejecuta una vez la función `reiniciarClave` en el editor de Apps Script.
+- Si dos dispositivos cambian al mismo jugador, gana el cambio más reciente. El servicio ignora sin avisar un cambio con una hora anterior a la que ya guarda; la página lo evita usando siempre una hora mayor que la conocida.
 - Arriba, junto a la fecha de los datos, la página indica si las asignaciones están sincronizadas o pendientes.
-- Solo se sincroniza con la contraseña de la página puesta (datos cifrados). La clave de escritura del servicio se fija la primera vez que se guarda algo. **Si cambias la contraseña de la página**, ejecuta una vez la función `reiniciarClave` en el editor de Apps Script (menú desplegable de funciones → Ejecutar). Las asignaciones guardadas con la contraseña vieja ya no se podrán leer; cada dispositivo vuelve a enviar las suyas.
-- Si cambias el código del Apps Script, hay que crear una **nueva implementación** (o administrar la actual y elegir «Nueva versión»); la URL no cambia si editas la implementación existente.
 
-**Si la página muestra «Motivo: el navegador no pudo conectar con el servicio»** aunque la URL abra bien en una ventana privada: el navegador está bloqueando la lectura entre sitios. La página ya lo intenta de otra forma (JSONP), pero necesita la versión actual de `est-sync.gs`: pégala de nuevo en Apps Script (reemplazando todo), guarda, y en **Implementar → Administrar implementaciones → ✏️ → Versión: Nueva versión → Implementar**. La URL no cambia.
+## Si algo no se ve como esperas
 
-## Tabla
-- La columna **#** es solo la posición en la vista actual (siempre 1, 2, 3…, aunque ordenes o filtres). Pulsar su encabezado vuelve al orden de la hoja.
-- Al hacer scroll horizontal quedan inmovilizadas las columnas hasta **Forma** y **Cond.** (en pantallas angostas se inmovilizan menos).
-- **CSV** copia la tabla visible como texto separado por tabulaciones, para pegar en una planilla.
-- **Ocultar Valor** oculta la columna Valor (queda recordado en cada dispositivo).
+- **Un dispositivo muestra una versión antigua** (por ejemplo, una opción de «Pos.» que no aparece o no se sincroniza): el navegador guardó la página en memoria. Abre la dirección con algo al final, como `?v=2`, o borra los datos del sitio. Si la instalaste como acceso directo, ábrela desde el navegador.
+- **Diagnóstico de sincronización**: abre la página con `?diag=1` al final. Aparece un botón **Diagnóstico** que compara lo que hay en el dispositivo con lo que hay en el servicio. Cópialo con el botón **Copiar**.
+- **La página aparece en blanco con solo un título**: falta `index.html` en la raíz del repositorio.
+- **Una página abierta como archivo local no muestra datos**: el navegador bloquea la lectura de `data/` desde un archivo. Usa GitHub Pages o, en esta carpeta, `python -m http.server` y entra a `http://localhost:8000/`.
+- **El script trae menos jugadores de los que tienes**: la API entrega la plantilla por páginas; el script ya las pide todas.
