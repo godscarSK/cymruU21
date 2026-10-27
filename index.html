@@ -212,7 +212,7 @@ td.sk { min-width: 2.4rem; }
 table.no-team .c-team { display: none; }
 table.no-val .c-val { display: none; }
 td.c-team { white-space: nowrap; }
-td.c-team .ctry { margin-left: 3px; vertical-align: top; position: relative; top: -.35em; font-size: .6rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #0d9488; line-height: 1; }
+td.c-team .ctry { display: block; font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #0d9488; line-height: 1.1; }
 :root[data-theme="dark"] td.c-team .ctry { color: #2dd4bf; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) td.c-team .ctry { color: #2dd4bf; } }
 td.c-team a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 3px; }
@@ -1267,7 +1267,7 @@ function render() {
       if (c.key === "team") {
         if (!p.team) return `<td class="l dim">${p.loaded || p.failed ? "—" : "…"}</td>`;
         const ct = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
-        return `<td class="l">${p.teamId != null ? `<a class="tlink" href="https://sokker.org/team/${encodeURIComponent(p.teamId)}" target="_blank" rel="noopener">${esc(p.team)}</a>` : esc(p.team)}${ct ? `<span class="ctry" title="País del equipo">${esc(ct)}</span>` : ""}</td>`;
+        return `<td class="l">${ct ? `<span class="ctry" title="País del equipo">${esc(ct)}</span>` : ""}${p.teamId != null ? `<a class="tlink" href="https://sokker.org/team/${encodeURIComponent(p.teamId)}" target="_blank" rel="noopener">${esc(p.team)}</a>` : esc(p.team)}</td>`;
       }
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
