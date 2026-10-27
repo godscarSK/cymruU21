@@ -225,10 +225,18 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
       else if (r.ok) teams[id] = { bot: false };
       else console.warn(`  Equipo ${id}: HTTP ${r.status}`);
     } catch (e) { console.warn(`  Equipo ${id}: ${e.message}`); }
+    // País del equipo: GET /team/{id} → country {code, name}.
+    try {
+      const r2 = await fetch(`${API_BASE}/team/${id}`, { headers: { Accept: "application/json", ...(cookie ? { Cookie: cookie } : {}) } });
+      if (r2.ok) {
+        const c = (await r2.json())?.country;
+        if (c && c.name) teams[id] = { ...(teams[id] || {}), country: { code: c.code ?? null, name: String(c.name) } };
+      } else console.warn(`  Equipo ${id} (país): HTTP ${r2.status}`);
+    } catch (e) { console.warn(`  Equipo ${id} (país): ${e.message}`); }
     await sleep(DELAY_MS);
   }
 }));
-console.log(`Equipos bot: ${Object.values(teams).filter(t => t.bot).length} de ${teamIds.length}.`);
+console.log(`Equipos bot: ${Object.values(teams).filter(t => t.bot).length} de ${teamIds.length}; con país: ${Object.values(teams).filter(t => t.country).length}.`);
 
 await mkdir("data", { recursive: true });
 console.log("Respaldo semanal: " + await rotateBackup("data", new Date(), SITE_PW, PW_CHANGED));

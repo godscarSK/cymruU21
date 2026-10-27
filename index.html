@@ -149,7 +149,8 @@ th button {
 }
 th button:hover { background: rgba(0,0,0,.06); }
 th button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-th.c-name button, td.c-name { justify-content: flex-start; text-align: left; }
+td.c-name { justify-content: flex-start; text-align: left; }
+th.c-name button { justify-content: center; text-align: center; }
 th[aria-sort="ascending"] button::after { content: "▲"; font-size: .65em; color: var(--accent); }
 th[aria-sort="descending"] button::after { content: "▼"; font-size: .65em; color: var(--accent); }
 td.c-name { text-align: left; }
@@ -211,6 +212,9 @@ td.sk { min-width: 2.4rem; }
 table.no-team .c-team { display: none; }
 table.no-val .c-val { display: none; }
 td.c-team { white-space: nowrap; }
+td.c-team .ctry { display: block; font-size: .62rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); line-height: 1.1; }
+td.c-team a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 3px; }
+td.c-team a:hover { text-decoration-color: var(--accent); }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
 .chg { font-size: .7em; vertical-align: 1px; }
@@ -627,6 +631,7 @@ function normalize(row, api) {
 }
 
 /* ─────────────── Estado ─────────────── */
+const TEAM_COUNTRY = new Map();   // teamId → nombre del país
 const TEAM_BOT = new Map();   // teamId → true (sin dueño) / false
 const isBot = p => p.teamBot === true || (p.teamId != null && TEAM_BOT.get(String(p.teamId)) === true);
 async function checkOwners(ids, fetchOwner, shouldStop) {
@@ -778,7 +783,10 @@ async function load(force) {
   }
   $("#forgetPw").hidden = !env;
   if (st) {
-    for (const [id, v] of Object.entries(st.teams || {})) TEAM_BOT.set(String(id), !!v.bot);
+    for (const [id, v] of Object.entries(st.teams || {})) {
+      if (typeof v.bot === "boolean") TEAM_BOT.set(String(id), v.bot);
+      if (v.country?.name) TEAM_COUNTRY.set(String(id), String(v.country.name));
+    }
     state.players = st.rows.map(r => normalize(r, st.api?.[r.pid]));
     state.players.forEach((p, i) => { if (!st.api?.[st.rows[i].pid]) p.failed = true; });
     state.stamp = st.generatedAt ? Date.parse(st.generatedAt) : null;
@@ -1254,6 +1262,11 @@ function render() {
       if (c.key === "n") return `<td class="c-n">${rowIdx + 1}</td>`;
       if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
       if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
+      if (c.key === "team") {
+        if (!p.team) return `<td class="l dim">${p.loaded || p.failed ? "—" : "…"}</td>`;
+        const ct = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
+        return `<td class="l">${ct ? `<span class="ctry" title="País del equipo">${esc(ct)}</span>` : ""}${p.teamId != null ? `<a class="tlink" href="https://sokker.org/team/${encodeURIComponent(p.teamId)}" target="_blank" rel="noopener">${esc(p.team)}</a>` : esc(p.team)}</td>`;
+      }
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
         return `<td class="l">${p.injury ? `<span class="tag">Lesión ${p.injury} d</span>` : `<span class="dim">${esc(p.nt)}</span>`}</td>`;
