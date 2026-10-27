@@ -1284,7 +1284,7 @@ function render() {
       if (c.key === "team") {
         if (!p.team) return `<td class="l dim">${p.loaded || p.failed ? "—" : "…"}</td>`;
         const ct = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
-        return `<td class="l">${ct ? `<span class="ctry" title="País del equipo">${esc(ct)}</span>` : ""}${p.teamId != null ? `<a class="tlink" href="https://sokker.org/team/${encodeURIComponent(p.teamId)}" target="_blank" rel="noopener">${esc(p.team)}</a>` : esc(p.team)}</td>`;
+        return `<td class="l">${ct ? `<span class="ctry" title="País del equipo">${esc(ct)}</span>` : ""}${p.teamId != null ? `<a class="tlink" href="https://sokker.org/en/app/team/${encodeURIComponent(p.teamId)}/" target="_blank" rel="noopener">${esc(p.team)}</a>` : esc(p.team)}</td>`;
       }
       if (c.key === "injury") {
         if (!p.loaded) return `<td class="l dim">${p.failed ? "Sin datos" : "…"}</td>`;
