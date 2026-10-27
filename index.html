@@ -1350,22 +1350,23 @@ function render() {
 }
 
 // ── Vista «Países»: cuántos equipos (distintos) hay de cada país entre los jugadores visibles ──
-const CT_COLS = [{ key: "n", label: "#" }, { key: "name", label: "País", left: true }, { key: "f", label: "Equipos" }, { key: "j", label: "Jugadores" }];
+const CT_COLS = [{ key: "n", label: "#" }, { key: "name", label: "País", left: true }, { key: "f", label: "Equipos" }, { key: "j", label: "Jugadores" }, { key: "pct", label: "Jugadores %" }];
 const cstate = { sort: { key: "n", dir: 1 } };
 function countryRows() {
   const byC = new Map();
-  for (const p of visibleRows()) {
+  const vis = visibleRows();
+  for (const p of vis) {
     if (p.teamId == null) continue;
     const c = TEAM_COUNTRY.get(String(p.teamId));
     if (!c) continue;
     if (!byC.has(c)) byC.set(c, { teams: new Set(), j: 0 });
     const e = byC.get(c); e.teams.add(String(p.teamId)); e.j++;
   }
-  const list = [...byC].map(([name, e]) => ({ name, f: e.teams.size, j: e.j }));
+  const list = [...byC].map(([name, e]) => ({ name, f: e.teams.size, j: e.j, pct: vis.length ? e.j / vis.length * 100 : 0 }));
   list.sort((a, b) => b.f - a.f || a.name.localeCompare(b.name, "es"));   // orden base: más frecuentes primero
   const { key, dir } = cstate.sort;
   if (key === "name") list.sort((a, b) => dir * a.name.localeCompare(b.name, "es"));
-  else if (key === "f" || key === "j") list.sort((a, b) => dir * (a[key] - b[key]) || a.name.localeCompare(b.name, "es"));
+  else if (key === "f" || key === "j" || key === "pct") list.sort((a, b) => dir * (a[key] - b[key]) || a.name.localeCompare(b.name, "es"));
   else if (dir === -1) list.reverse();
   return list;
 }
@@ -1376,8 +1377,8 @@ function renderCountries() {
   }).join("");
   const list = countryRows();
   $("#cbody").innerHTML = list.length
-    ? list.map((r, i) => `<tr><td>${i + 1}</td><td class="l">${esc(r.name)}</td><td>${r.f}</td><td>${r.j}</td></tr>`).join("")
-    : `<tr><td class="empty" colspan="4">No hay países para mostrar. Los países se cargan con fetch-players.mjs y dependen de los filtros activos.</td></tr>`;
+    ? list.map((r, i) => `<tr><td>${i + 1}</td><td class="l">${esc(r.name)}</td><td>${r.f}</td><td>${r.j}</td><td>${r.pct.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</td></tr>`).join("")
+    : `<tr><td class="empty" colspan="5">No hay países para mostrar. Los países se cargan con fetch-players.mjs y dependen de los filtros activos.</td></tr>`;
 }
 function setCountries(on) {
   state.countries = on;
@@ -1542,7 +1543,7 @@ function init() {
   $("#chead").addEventListener("click", e => {
     const th = e.target.closest("th[data-key]"); if (!th) return;
     const k = th.dataset.key;
-    cstate.sort = k === "n" ? { key: "n", dir: 1 } : { key: k, dir: cstate.sort.key === k ? -cstate.sort.dir : (k === "f" || k === "j" ? -1 : 1) };
+    cstate.sort = k === "n" ? { key: "n", dir: 1 } : { key: k, dir: cstate.sort.key === k ? -cstate.sort.dir : (k === "f" || k === "j" || k === "pct" ? -1 : 1) };
     renderCountries();
   });
   $("#hideVal").addEventListener("click", () => { setHideVal(!state.hideVal); render(); });
