@@ -312,12 +312,13 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <button class="btn" id="login" type="button">Conectar a Sokker</button>
       <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
       <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
-      <button class="btn" id="showCountries" type="button" aria-pressed="false" title="Ver cuántos equipos hay de cada país">Países</button>
       <button class="btn" id="hideVal" type="button" aria-pressed="false" title="Ocultar o mostrar la columna Valor">Ocultar Valor</button>
       <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Clubes</button>
+      <button class="btn" id="showCountries" type="button" aria-pressed="false" title="Ver cuántos equipos hay de cada país">Países</button>
       <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
       <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
+      <button class="btn" id="onlyU21" type="button" aria-pressed="false" title="Mostrar solo los jugadores citados a la selección (marca U21)">U21</button>
       <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
       <button class="btn primary" id="copy" type="button" title="Copiar la tabla visible para pegarla en una planilla">CSV</button>
     </div>
@@ -663,7 +664,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1098,6 +1099,7 @@ function visibleRows() {
     if (state.onlyBot && !isBot(p)) return false;
     if (state.onlyInjured && !p.injury) return false;
     if (state.onlySusp && !p.red) return false;
+    if (state.onlyU21 && !p.callUp) return false;
     const hs = hasSkills(p.skills);
     if (state.skills === "visible" && !hs) return false;
     if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
@@ -1215,7 +1217,7 @@ function savePrefs() {
   if (!prefsReady) return;
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify({
-      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp,
+      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp, onlyU21: state.onlyU21,
       hidden: state.skills === "hidden", clubs: state.showTeam, hideVal: state.hideVal, sort: state.sort
     }));
   } catch {}
@@ -1230,6 +1232,7 @@ function loadPrefs() {
   state.onlyBot = p.onlyBot === true;
   state.onlyInjured = p.onlyInjured === true;
   state.onlySusp = p.onlySusp === true;
+  state.onlyU21 = p.onlyU21 === true;
   state.skills = p.hidden === true ? "hidden" : "all";
   if (p.sort && COLS.some(c => c.key === p.sort.key) && (p.sort.dir === 1 || p.sort.dir === -1)) state.sort = { key: p.sort.key, dir: p.sort.dir };
   if (!CONFIG.showTeam && typeof p.clubs === "boolean") setClubs(p.clubs);
@@ -1237,7 +1240,7 @@ function loadPrefs() {
   // Sincroniza el aspecto de los botones con lo recuperado.
   const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
   press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
-  press("#onlySusp", state.onlySusp); press("#onlyHidden", state.skills === "hidden");
+  press("#onlySusp", state.onlySusp); press("#onlyU21", state.onlyU21); press("#onlyHidden", state.skills === "hidden");
   document.querySelectorAll("#poss button[data-pos]").forEach(b => b.setAttribute("aria-pressed", String(state.pos.has(b.dataset.pos))));
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
@@ -1514,6 +1517,11 @@ function init() {
   $("#onlySusp").addEventListener("click", e => {
     state.onlySusp = !state.onlySusp;
     e.currentTarget.setAttribute("aria-pressed", String(state.onlySusp));
+    render();
+  });
+  $("#onlyU21").addEventListener("click", e => {
+    state.onlyU21 = !state.onlyU21;
+    e.currentTarget.setAttribute("aria-pressed", String(state.onlyU21));
     render();
   });
   $("#onlyHidden").addEventListener("click", e => {

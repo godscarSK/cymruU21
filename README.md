@@ -96,4 +96,5 @@ Cómo funciona y qué tener en cuenta:
 - Al hacer scroll horizontal quedan inmovilizadas las columnas hasta **Forma** y **Cond.** (en pantallas angostas se inmovilizan menos).
 - **CSV** copia la tabla visible como texto separado por tabulaciones, para pegar en una planilla.
 - **Ocultar Valor** oculta la columna Valor (queda recordado en cada dispositivo).
-- **Países** reemplaza la tabla por un resumen: cada país de los clubes de los jugadores visibles (respeta filtros) y cuántos equipos distintos tiene. Pulsa de nuevo para volver. Requiere haber ejecutado `fetch-players.mjs` (guarda el país de cada club).
+- **Países** (a la derecha de Clubes) reemplaza la tabla por un resumen: cada país de los clubes de los jugadores visibles (respeta filtros) y cuántos equipos distintos tiene. Pulsa de nuevo para volver. Requiere haber ejecutado `fetch-players.mjs` (guarda el país de cada club).
+- **U21** muestra solo los jugadores citados a la selección (los que llevan la marca U21).
