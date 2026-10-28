@@ -1422,13 +1422,14 @@ async function copyPid(pid) {
 
 async function copyTable() {
   const rows = visibleRows();
-  const cols = COLS.filter(c => c.key !== "team" || state.showTeam);
+  const cols = COLS.filter(c => c.key !== "team" || state.showTeam).flatMap(c => c.key === "name" ? [c, { key: "pid", label: "PID" }] : [c]);
   const head = cols.map(c => c.long || (c.label === "#" ? "N" : c.label));
   const lines = [head.join("\t")];
   for (const p of rows) {
     lines.push(cols.map(c => {
       if (c.key === "n") return rows.indexOf(p) + 1;
       if (c.key === "name") return p.name || p.pid;
+      if (c.key === "pid") return p.pid;
       return cellText(p, c.key).replace(/\t|\n/g, " ");
     }).join("\t"));
   }
