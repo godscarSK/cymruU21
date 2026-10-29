@@ -261,6 +261,9 @@ th.ctr button { justify-content: center; }
   border: 1px solid var(--ink); background: var(--panel); color: var(--ink);
 }
 .theme svg { width: 22px; height: 22px; }
+.theme.sumexp { top: 64px; }
+.theme.sumexp svg { width: 20px; height: 20px; }
+@media (max-width: 760px) { .theme.sumexp { top: 14px; right: 66px; } .brand .logo { height: 2.3rem; } header.top h1 { font-size: 2.3rem; } header.top .lede { margin-right: 56px; } }
 .theme:hover { filter: brightness(0.95); }
 .dim { color: var(--muted); }
 .tag {
@@ -300,6 +303,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 </head>
 <body>
 <div class="wrap">
+  <button class="theme sumexp" id="sumExport" type="button" aria-label="Copiar los cuadros resumen" title="Copiar los cuadros resumen (para pegar en una planilla)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
   <button class="theme" id="theme" type="button" aria-label="Cambiar a modo oscuro" title="Cambiar a modo oscuro"></button>
   <header class="top">
     <div class="headrow">
@@ -1486,6 +1490,24 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), 2000);
 }
+async function copySummary() {
+  const rows = [];
+  document.querySelectorAll("#summary:not([hidden]) dl, #summaryUp:not([hidden]) dl").forEach(dl => {
+    const dts = dl.querySelectorAll("dt"), dds = dl.querySelectorAll("dd");
+    dts.forEach((dt, i) => rows.push(`${dt.textContent.trim()}\t${dds[i].textContent.trim()}`));
+  });
+  if (!rows.length) { toast("No hay resumen para copiar"); return; }
+  const text = ["Dato\tValor", ...rows].join("\n");
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  toast("Resumen copiado");
+}
 async function copyPid(pid) {
   try { await navigator.clipboard.writeText(pid); }
   catch {
@@ -1633,6 +1655,7 @@ function init() {
     cstate.sort = k === "n" ? { key: "n", dir: 1 } : { key: k, dir: cstate.sort.key === k ? -cstate.sort.dir : (k === "f" || k === "j" || k === "pct" ? -1 : 1) };
     renderCountries();
   });
+  $("#sumExport").addEventListener("click", copySummary);
   $("#hideVal").addEventListener("click", () => { setHideVal(!state.hideVal); render(); });
   $("#showClubs").addEventListener("click", () => { setClubs(!state.showTeam); render(); });
   $("#onlyBot").addEventListener("click", e => {
