@@ -84,11 +84,12 @@ h1 {
 }
 .headrow { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; }
 .headleft { min-width: 0; }
-.summary { margin-right: 58px; margin-top: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font-size: .82rem; }
+.sums { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-right: 58px; margin-top: 2px; }
+.summary { margin: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font-size: .82rem; }
 .summary dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 3px 18px; }
 .summary dt { color: var(--muted); }
 .summary dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-@media (max-width: 760px) { .summary { margin-right: 0; width: 100%; } .summary dl { grid-template-columns: auto auto auto auto; } }
+@media (max-width: 760px) { .sums { margin-right: 0; width: 100%; } .summary { flex: 1 1 14rem; } }
 .brand { display: flex; align-items: center; gap: clamp(10px, 2vw, 20px); }
 .brand .logo { height: clamp(3rem, 9vw, 5.5rem); width: auto; flex: none; }
 h1 .mark { color: var(--accent); }
@@ -309,6 +310,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     </div>
     <p class="lede" id="lede">Cargando jugadores…</p>
     </div>
+    <div class="sums">
     <aside class="summary" id="summary" aria-label="Resumen" hidden>
       <dl>
         <dt>Jugadores</dt><dd id="sumPlayers">—</dd>
@@ -316,9 +318,22 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
         <dt>Lesionados</dt><dd id="sumInj">—</dd>
         <dt>Suspendidos</dt><dd id="sumSusp">—</dd>
         <dt>Bots</dt><dd id="sumBot">—</dd>
-        <dt>Subidas</dt><dd id="sumUp" title="Subidas de skills en la última actualización semanal">—</dd>
       </dl>
     </aside>
+    <aside class="summary" id="summaryUp" aria-label="Subidas de skills" title="Subidas de la última actualización semanal, según los jugadores que se muestran en la tabla" hidden>
+      <dl>
+        <dt>Subidas</dt><dd id="upAll">—</dd>
+        <dt>Subidas GK</dt><dd id="upKeeper">—</dd>
+        <dt>Subidas DEF</dt><dd id="upDefender">—</dd>
+        <dt>Subidas CRE</dt><dd id="upPlaymaker">—</dd>
+        <dt>Subidas ATT</dt><dd id="upStriker">—</dd>
+        <dt>Subidas CON</dt><dd id="upStamina">—</dd>
+        <dt>Subidas RAP</dt><dd id="upPace">—</dd>
+        <dt>Subidas TEC</dt><dd id="upTechnique">—</dd>
+        <dt>Subidas PAS</dt><dd id="upPassing">—</dd>
+      </dl>
+    </aside>
+    </div>
     </div>
   </header>
 
@@ -1356,7 +1371,7 @@ function render() {
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
 
-  updateSummary();
+  updateSummary(rows);
   applyFreeze();
   if (state.countries) renderCountries();
 
@@ -1428,7 +1443,7 @@ function setHideVal(on) {
   b.setAttribute("aria-pressed", String(on));
   b.textContent = on ? "Mostrar Valor" : "Ocultar Valor";
 }
-function updateSummary() {
+function updateSummary(rows) {
   const box = $("#summary");
   const all = state.players;
   box.hidden = !all.length;
@@ -1440,13 +1455,22 @@ function updateSummary() {
   $("#sumInj").textContent = n(p => p.injury > 0);
   $("#sumSusp").textContent = n(p => p.red > 0);
   $("#sumBot").textContent = n(isBot);
-  let ups = 0, hasPrev = false;
-  for (const p of all) {
+  // Subidas: solo de los jugadores que se muestran en la tabla (respeta los filtros).
+  const box2 = $("#summaryUp");
+  box2.hidden = false;
+  const cnt = { all: 0, stamina: 0, keeper: 0, defender: 0, playmaker: 0, striker: 0, pace: 0, technique: 0, passing: 0 };
+  let hasPrev = false;
+  for (const p of rows) {
     if (!p.prev) continue;
     hasPrev = true;
-    for (const c of SKILL_COLUMNS) { const v = p.skills?.[c.skill], b = p.prev[c.skill]; if (Number.isFinite(v) && Number.isFinite(b) && v > b) ups++; }
+    for (const c of SKILL_COLUMNS) {
+      const v = p.skills?.[c.skill], b = p.prev[c.skill];
+      if (Number.isFinite(v) && Number.isFinite(b) && v > b) { cnt.all++; if (c.skill in cnt) cnt[c.skill]++; }
+    }
   }
-  $("#sumUp").textContent = hasPrev ? String(ups) : "—";
+  const put = (id, v) => { $(id).textContent = hasPrev ? String(v) : "—"; };
+  put("#upAll", cnt.all); put("#upKeeper", cnt.keeper); put("#upDefender", cnt.defender); put("#upPlaymaker", cnt.playmaker);
+  put("#upStriker", cnt.striker); put("#upStamina", cnt.stamina); put("#upPace", cnt.pace); put("#upTechnique", cnt.technique); put("#upPassing", cnt.passing);
 }
 function setClubs(on) {
   state.showTeam = on;
