@@ -232,7 +232,12 @@ td.c-team a { color: var(--ink); text-decoration-color: var(--line); text-underl
 td.c-team a:hover { text-decoration-color: var(--accent); }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
-.chg { font-size: .7em; vertical-align: 1px; }
+.chg { font-size: .7em; vertical-align: .4em; }
+tbody tr td.sk.cu { background-color: #d3f0dd; }
+tbody tr td.sk.cd { background-color: #f8d7d4; }
+:root[data-theme="dark"] tbody tr td.sk.cu { background-color: #1d4a31; }
+:root[data-theme="dark"] tbody tr td.sk.cd { background-color: #55231f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) tbody tr td.sk.cu { background-color: #1d4a31; } :root:not([data-theme="light"]) tbody tr td.sk.cd { background-color: #55231f; } }
 .chg.up { color: #1f8f4a; }
 .chg.down { color: #c8352f; }
 :root[data-theme="dark"] .chg.up { color: #5fd58b; }
@@ -1318,7 +1323,8 @@ function render() {
         const mark = Number.isFinite(before) && before !== v
           ? (v > before ? ` <span class="chg up" title="Subió: antes ${before}" aria-label="subió, antes ${before}">▲</span>` : ` <span class="chg down" title="Bajó: antes ${before}" aria-label="bajó, antes ${before}">▼</span>`)
           : "";
-        return `<td class="sk">${v}${mark}</td>`;
+        const cc = Number.isFinite(before) && before !== v ? (v > before ? " cu" : " cd") : "";
+        return `<td class="sk${cc}">${v}${mark}</td>`;
       }
       if (c.comp) {
         const v = compositeValue(p, c.comp);
