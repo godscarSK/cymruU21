@@ -233,10 +233,12 @@ td.c-team a:hover { text-decoration-color: var(--accent); }
 th.sepl, td.sepl { border-left: 1px solid var(--muted); }
 th.sepr, td.sepr { border-right: 1px solid var(--muted); }
 .chg { font-size: .7em; vertical-align: .4em; }
+tbody tr td.sk.hl.cu, tbody tr td.sk.hl.cd { background-color: var(--hl); }   /* el amarillo de la suma ordenada tiene prioridad sobre el verde/rojo */
 tbody tr td.sk.cu { background-color: #d3f0dd; }
 tbody tr td.sk.cd { background-color: #f8d7d4; }
 :root[data-theme="dark"] tbody tr td.sk.cu { background-color: #1d4a31; }
 :root[data-theme="dark"] tbody tr td.sk.cd { background-color: #55231f; }
+tbody tr td.sk.hl.cu, tbody tr td.sk.hl.cd { background-color: var(--hl) !important; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) tbody tr td.sk.cu { background-color: #1d4a31; } :root:not([data-theme="light"]) tbody tr td.sk.cd { background-color: #55231f; } }
 .chg.up { color: #1f8f4a; }
 .chg.down { color: #c8352f; }
@@ -345,6 +347,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
       <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
       <button class="btn" id="onlyU21" type="button" aria-pressed="false" title="Mostrar solo los jugadores citados a la selección (marca U21)">U21</button>
+      <button class="btn" id="onlyChanges" type="button" aria-pressed="false" title="Mostrar solo los jugadores con cambios en sus skills respecto a la semana anterior (subidas o bajadas)">Cambios</button>
       <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
       <button class="btn primary" id="copy" type="button" title="Copiar la tabla visible para pegarla en una planilla">CSV</button>
     </div>
@@ -690,7 +693,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1116,6 +1119,7 @@ function sortValue(p, key) {
   return v === undefined || v === "" ? null : v;
 }
 
+const hasChange = p => !!p.prev && SKILL_COLUMNS.some(c => { const v = p.skills?.[c.skill], b = p.prev[c.skill]; return Number.isFinite(v) && Number.isFinite(b) && v !== b; });
 function visibleRows() {
   const q = state.q.trim().toLowerCase();
   const out = state.players.filter(p => {
@@ -1126,6 +1130,7 @@ function visibleRows() {
     if (state.onlyInjured && !p.injury) return false;
     if (state.onlySusp && !p.red) return false;
     if (state.onlyU21 && !p.callUp) return false;
+    if (state.onlyChanges && !hasChange(p)) return false;
     const hs = hasSkills(p.skills);
     if (state.skills === "visible" && !hs) return false;
     if (state.skills === "hidden" && !(p.loaded && !hs)) return false;
@@ -1243,7 +1248,7 @@ function savePrefs() {
   if (!prefsReady) return;
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify({
-      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp, onlyU21: state.onlyU21,
+      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp, onlyU21: state.onlyU21, onlyChanges: state.onlyChanges,
       hidden: state.skills === "hidden", clubs: state.showTeam, hideVal: state.hideVal, sort: state.sort
     }));
   } catch {}
@@ -1259,6 +1264,7 @@ function loadPrefs() {
   state.onlyInjured = p.onlyInjured === true;
   state.onlySusp = p.onlySusp === true;
   state.onlyU21 = p.onlyU21 === true;
+  state.onlyChanges = p.onlyChanges === true;
   state.skills = p.hidden === true ? "hidden" : "all";
   if (p.sort && COLS.some(c => c.key === p.sort.key) && (p.sort.dir === 1 || p.sort.dir === -1)) state.sort = { key: p.sort.key, dir: p.sort.dir };
   if (!CONFIG.showTeam && typeof p.clubs === "boolean") setClubs(p.clubs);
@@ -1266,7 +1272,7 @@ function loadPrefs() {
   // Sincroniza el aspecto de los botones con lo recuperado.
   const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
   press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
-  press("#onlySusp", state.onlySusp); press("#onlyU21", state.onlyU21); press("#onlyHidden", state.skills === "hidden");
+  press("#onlySusp", state.onlySusp); press("#onlyU21", state.onlyU21); press("#onlyChanges", state.onlyChanges); press("#onlyHidden", state.skills === "hidden");
   document.querySelectorAll("#poss button[data-pos]").forEach(b => b.setAttribute("aria-pressed", String(state.pos.has(b.dataset.pos))));
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
@@ -1575,6 +1581,11 @@ function init() {
   $("#onlyU21").addEventListener("click", e => {
     state.onlyU21 = !state.onlyU21;
     e.currentTarget.setAttribute("aria-pressed", String(state.onlyU21));
+    render();
+  });
+  $("#onlyChanges").addEventListener("click", e => {
+    state.onlyChanges = !state.onlyChanges;
+    e.currentTarget.setAttribute("aria-pressed", String(state.onlyChanges));
     render();
   });
   $("#onlyHidden").addEventListener("click", e => {

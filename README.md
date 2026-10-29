@@ -98,3 +98,4 @@ Cómo funciona y qué tener en cuenta:
 - **Ocultar Valor** oculta la columna Valor (queda recordado en cada dispositivo).
 - **Países** (a la derecha de Clubes) reemplaza la tabla por un resumen: cada país de los clubes de los jugadores visibles (respeta filtros) y cuántos equipos distintos tiene. Pulsa de nuevo para volver. Requiere haber ejecutado `fetch-players.mjs` (guarda el país de cada club).
 - **U21** muestra solo los jugadores citados a la selección (los que llevan la marca U21).
+- **Cambios** muestra solo los jugadores con alguna skill que subió o bajó respecto al respaldo semanal.
