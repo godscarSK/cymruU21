@@ -106,5 +106,7 @@ Página para armar la alineación del próximo partido. Se abre con el botón **
 - Arrastra un nombre a un espacio de la cancha o a **Suplentes**; arrastra de un espacio a otro para intercambiar; arrástralo de vuelta a la lista para quitarlo. En el celular, mantén pulsado un instante el nombre y luego arrastra.
 - La **formación** se elige arriba (3-3-4, 3-4-3, 3-5-2, 4-2-4, 4-3-3, 4-4-2, 4-5-1, 5-2-3, 5-3-2, 5-4-1). Al cambiarla no se pierde nada: los jugadores de las líneas que se acortan vuelven a la lista y reaparecen en su lugar si vuelves a la formación anterior.
 - Al tocar un apellido se abre su ficha con las skills (y botón para agregarlo o quitarlo de la alineación).
+- La cancha es alargada, con los delanteros arriba y la defensa junto al portero abajo.
+- **Sustituciones:** cada suplente tiene un campo **Entra al min** (texto libre, por ejemplo 60) y un selector **por** con los titulares. El titular elegido queda marcado en la cancha con una etiqueta roja "↓ minuto". Al sacar al suplente de la lista de suplentes se borran sus datos.
 - La alineación se guarda en el navegador y se **sincroniza entre dispositivos** con el mismo Apps Script de la columna Pos. Para eso hay que **pegar de nuevo `est-sync.gs`** en Apps Script y crear una «Nueva versión» de la implementación (la versión nueva acepta la clave de la alineación y valores más largos). No hace falta volver a publicar el enlace ni tocar `config.js`.
 - Al subir a GitHub: `index.html`, `alineacion.html` y `logo.png` van en la misma carpeta.
