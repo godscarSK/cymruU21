@@ -99,3 +99,12 @@ Cómo funciona y qué tener en cuenta:
 - **Países** (a la derecha de Clubes) reemplaza la tabla por un resumen: cada país de los clubes de los jugadores visibles (respeta filtros) y cuántos equipos distintos tiene. Pulsa de nuevo para volver. Requiere haber ejecutado `fetch-players.mjs` (guarda el país de cada club).
 - **U21** muestra solo los jugadores citados a la selección (los que llevan la marca U21).
 - **Cambios** muestra solo los jugadores con alguna skill que subió o bajó respecto al respaldo semanal.
+
+## Alineación (alineacion.html)
+Página para armar la alineación del próximo partido. Se abre con el botón **Alineación** de la tabla (y vuelve con **← Tabla**).
+- Muestra solo los jugadores con marca GK, DEF, MID o ATT en la columna **Pos.** de la tabla, agrupados por marca.
+- Arrastra un nombre a un espacio de la cancha o a **Suplentes**; arrastra de un espacio a otro para intercambiar; arrástralo de vuelta a la lista para quitarlo. En el celular, mantén pulsado un instante el nombre y luego arrastra.
+- La **formación** se elige arriba (3-3-4, 3-4-3, 3-5-2, 4-2-4, 4-3-3, 4-4-2, 4-5-1, 5-2-3, 5-3-2, 5-4-1). Al cambiarla no se pierde nada: los jugadores de las líneas que se acortan vuelven a la lista y reaparecen en su lugar si vuelves a la formación anterior.
+- Al tocar un apellido se abre su ficha con las skills (y botón para agregarlo o quitarlo de la alineación).
+- La alineación se guarda en el navegador y se **sincroniza entre dispositivos** con el mismo Apps Script de la columna Pos. Para eso hay que **pegar de nuevo `est-sync.gs`** en Apps Script y crear una «Nueva versión» de la implementación (la versión nueva acepta la clave de la alineación y valores más largos). No hace falta volver a publicar el enlace ni tocar `config.js`.
+- Al subir a GitHub: `index.html`, `alineacion.html` y `logo.png` van en la misma carpeta.

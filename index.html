@@ -126,6 +126,8 @@ button.btn {
 }
 button.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button.btn:hover { filter: brightness(0.96); }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; font-weight: 600; min-height: 38px; padding: 7px 14px; border-radius: 4px; border: 1px solid var(--ink); background: var(--panel); color: var(--ink); }
+a.btn:hover { filter: brightness(0.96); }
 button.btn[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
 
 #status { min-height: 1.4em; margin: 4px 0 10px; color: var(--muted); font-size: 0.95rem; }
@@ -356,6 +358,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     <label class="check" id="formToggle"><input type="checkbox" id="withForm"> Con forma</label>
     <div class="actions" role="group" aria-label="Acciones y filtros">
       <span class="who" id="who" hidden></span>
+      <a class="btn" href="alineacion.html" title="Armar la alineación del próximo partido">Alineación</a>
       <button class="btn" id="login" type="button">Conectar a Sokker</button>
       <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
       <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
@@ -1107,6 +1110,7 @@ async function pullEst() {
     let changed = false;
     for (const it of j.items || []) {
       const pid = String(it.pid), t = Number(it.t) || 0;
+      if (!/^\d+$/.test(pid)) continue;          // otras claves (p. ej. la alineación) no son asignaciones de jugadores
       remote.add(pid);
       let v; try { v = await decV(it.v); } catch { continue; }
       const loc = estMap[pid];
