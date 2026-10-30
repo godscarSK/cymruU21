@@ -116,3 +116,7 @@ Página para armar la alineación del próximo partido. Se abre con el botón **
 
 - **Suplentes**: arrastra un suplente sobre otro (la barra indica si queda antes o después) o usa las flechas ↑ ↓ de cada fila.
 - **Cancha libre**: arrastra un titular o un espacio vacío a cualquier punto de la cancha; también puedes soltar un jugador de la lista en un punto libre y ocupará un espacio disponible. "Restablecer posiciones" vuelve a la disposición por líneas. Las posiciones se guardan y sincronizan con cada alineación (no requiere actualizar est-sync.gs).
+
+### Guardar alineación
+
+Los cambios de la alineación (incluidas las posiciones en la cancha y el orden de suplentes) **no se envían solos**: se guardan en el dispositivo y aparece «Cambios sin guardar». Pulsa **Guardar alineación** para subirlos a la nube; los demás dispositivos los reciben al abrir la página. Una alineación con cambios sin guardar no es reemplazada por la versión de la nube. Las marcas de posición (columna Pos.) siguen sincronizándose automáticamente.

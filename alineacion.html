@@ -245,6 +245,7 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
     <button class="btn" id="lineDel" type="button" title="Eliminar esta alineación">Eliminar</button>
     <label>Formación <select id="formSel"></select></label>
     <button class="btn" id="clear" type="button">Vaciar</button>
+    <button class="btn" id="save" type="button">Guardar alineación</button>
     <button class="btn" id="posReset" type="button" title="Volver a las posiciones iniciales de la cancha">Restablecer posiciones</button>
     <span class="counter" id="counter">0/11 en cancha</span>
     <span class="grow"></span>
@@ -907,11 +908,13 @@ function explain(err) {
 }
 function setSync(state, detail = "") {
   sync.state = state; sync.detail = detail;
-  const T = { local: "", ok: "Alineación sincronizada.", pending: "Sincronizando…", offline: "Pendiente de sincronizar.", token: "No se pudo sincronizar." };
+  const T = { local: "", ok: "Alineación sincronizada.", pending: "Sincronizando…", unsaved: "Cambios sin guardar.", offline: "No se pudo guardar; reintenta con «Guardar alineación».", token: "No se pudo sincronizar." };
   $("#syncMsg").textContent = (T[state] || "") + (detail ? " Motivo: " + detail : "");
 }
 let pushTimer = null;
-function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushAll, 500); }
+// El envío a la nube es manual (botón «Guardar alineación»): los cambios solo se marcan como pendientes.
+function schedulePush() { if (Object.values(lib.items).some(x => x.dirty)) setSync("unsaved"); updateSaveBtn(); }
+function updateSaveBtn() { const b = $("#save"); if (b) b.classList.toggle("primary", Object.values(lib.items).some(x => x.dirty)); }
 async function pushAll() {
   if (!CONFIG.estUrl || !sync.key || sync.busy) return;
   const todo = Object.values(lib.items).filter(x => x.dirty);
@@ -926,7 +929,7 @@ async function pushAll() {
     }
     sync.busy = false;
     if (Object.values(lib.items).some(x => x.dirty)) return pushAll();
-    setSync("ok");
+    setSync("ok"); updateSaveBtn();
   } catch (err) { sync.busy = false; setSync(/token/i.test(err.message) ? "token" : "offline", explain(err)); }
 }
 async function pull() {
@@ -944,7 +947,7 @@ async function pull() {
     let lineChanged = false;
     for (const [id, r] of Object.entries(remoteL)) {
       const loc = lib.items[id];
-      if (loc && loc.t >= r.t) { if (loc.t > r.t) loc.dirty = true; continue; }
+      if (loc && (loc.t >= r.t || loc.dirty)) { if (loc.t > r.t) loc.dirty = true; continue; }   // lo no guardado en este dispositivo no se pisa
       if (r.v === "") { const o = newItem(id, loc ? loc.name : "Alineación"); o.t = r.t; o.del = true; lib.items[id] = o; lineChanged = true; continue; }
       try { const d = JSON.parse(r.v); const o = newItem(id, d.n, d); o.t = r.t; lib.items[id] = o; lineChanged = true; } catch {}
     }
@@ -954,7 +957,8 @@ async function pull() {
     if (dflt && dflt.t === 0 && !dflt.dirty && !remoteL[LINEUP_ID] && Object.values(remoteL).some(r => r.v !== "")) { delete lib.items[LINEUP_ID]; lineChanged = true; }
     useActive(); saveLocal();
     if (estChanged || lineChanged) render();
-    if (Object.values(lib.items).some(x => x.dirty)) await pushAll(); else setSync("ok");
+    if (Object.values(lib.items).some(x => x.dirty)) setSync("unsaved"); else setSync("ok");
+    updateSaveBtn();
   } catch (err) { setSync("offline", explain(err)); }
 }
 
@@ -1013,6 +1017,14 @@ async function init() {
     const b = e.target.closest("button[data-mv]"); if (!b || b.disabled) return;
     moveSub(b.dataset.pid, +b.dataset.mv);
   });
+  $("#save").addEventListener("click", async () => {
+    if (!CONFIG.estUrl || !sync.key) { toast("La sincronización no está configurada"); return; }
+    if (!Object.values(lib.items).some(x => x.dirty)) { toast("No hay cambios por guardar"); return; }
+    if (sync.busy) return;
+    await pushAll();
+    if (sync.state === "ok") toast("Alineación guardada");
+  });
+  window.addEventListener("beforeunload", e => { if (Object.values(lib.items).some(x => x.dirty) && sync.key) { e.preventDefault(); e.returnValue = ""; } });
   $("#posReset").addEventListener("click", () => { lineup.p = {}; changed(); toast("Posiciones restablecidas"); });
   $("#bench").addEventListener("change", e => {
     const sel = e.target.closest(".po select"); if (!sel) return;
