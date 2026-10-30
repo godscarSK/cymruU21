@@ -111,3 +111,8 @@ Página para armar la alineación del próximo partido. Se abre con el botón **
 - **Varias alineaciones con nombre:** el selector **Alineación** de la barra de arriba permite cambiar entre las guardadas, y los botones **Nueva**, **Duplicar**, **Renombrar** y **Eliminar** las administran (siempre debe quedar al menos una). Cada una tiene su propia formación, titulares, suplentes y sustituciones; cambiar de una a otra no modifica las demás. Qué alineación está abierta se recuerda por dispositivo.
 - La alineación se guarda en el navegador y se **sincroniza entre dispositivos** con el mismo Apps Script de la columna Pos. Para eso hay que **pegar de nuevo `est-sync.gs`** en Apps Script y crear una «Nueva versión» de la implementación (la versión nueva acepta la clave de la alineación y valores más largos). No hace falta volver a publicar el enlace ni tocar `config.js`.
 - Al subir a GitHub: `index.html`, `alineacion.html` y `logo.png` van en la misma carpeta.
+
+### Alineación: orden de suplentes y posiciones libres
+
+- **Suplentes**: arrastra un suplente sobre otro (la barra indica si queda antes o después) o usa las flechas ↑ ↓ de cada fila.
+- **Cancha libre**: arrastra un titular o un espacio vacío a cualquier punto de la cancha; también puedes soltar un jugador de la lista en un punto libre y ocupará un espacio disponible. "Restablecer posiciones" vuelve a la disposición por líneas. Las posiciones se guardan y sincronizan con cada alineación (no requiere actualizar est-sync.gs).
