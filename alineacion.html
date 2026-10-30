@@ -213,6 +213,7 @@ dialog.sk .acts { display: flex; gap: 10px; justify-content: flex-end; flex-wrap
 .sidecol { min-width: 0; }
 .sidecol .bench { margin-top: 12px; }
 @media (max-width: 820px) { .sidecol { order: 0; } }
+button.btn:disabled { opacity: .45; cursor: not-allowed; }
 
 </style>
 <script src="config.js" onerror="void 0"></script>
@@ -229,6 +230,11 @@ dialog.sk .acts { display: flex; gap: 10px; justify-content: flex-end; flex-wrap
   </header>
   <section class="toolbar" aria-label="Opciones">
     <a class="btn" href="index.html" title="Volver a la tabla de jugadores">← Tabla</a>
+    <label>Alineación <select id="lineSel"></select></label>
+    <button class="btn" id="lineNew" type="button" title="Crear una alineación nueva">Nueva</button>
+    <button class="btn" id="lineDup" type="button" title="Copiar la alineación actual">Duplicar</button>
+    <button class="btn" id="lineRen" type="button" title="Cambiar el nombre">Renombrar</button>
+    <button class="btn" id="lineDel" type="button" title="Eliminar esta alineación">Eliminar</button>
     <label>Formación <select id="formSel"></select></label>
     <button class="btn" id="clear" type="button">Vaciar</button>
     <span class="counter" id="counter">0/11 en cancha</span>
@@ -496,8 +502,10 @@ const isElig = pid => byPid.has(pid) && !!markOf(pid);
 
 /* ─────────────── Alineación ─────────────── */
 const emptyLineup = () => ({ f: "4-4-2", l: { GK: [""], DEF: ["", "", "", "", ""], MID: ["", "", "", "", ""], ATT: ["", "", "", ""] }, b: [], s: {}, t: 0 });   // b = suplentes; s[pid] = { m: minuto en que entra, o: pid del titular al que reemplaza }
-let lineup = emptyLineup();
-let lineupDirty = false;
+// Biblioteca: varias alineaciones con nombre. Cada una se guarda en el servicio con su propia clave (L1, L2, …).
+const LIB_KEY = "cantera:lineups";
+let lib = { items: {}, active: "" };     // items[id] = { id, name, f, l, b, s, t, dirty, del }
+let lineup;                               // la alineación activa (es lib.items[lib.active])
 function sanitize(o, t) {
   const L = emptyLineup();
   if (!o || typeof o !== "object") return L;
@@ -514,11 +522,31 @@ function sanitize(o, t) {
   L.t = Number(t ?? o.t) || 0;
   return L;
 }
+const LIB_ID = /^L\d{1,3}$/;
+const cleanName = n => String(n ?? "").trim().slice(0, 40) || "Alineación";
+function newItem(id, name, o) { const it = sanitize(o || {}, o ? o.t : 0); it.id = id; it.name = cleanName(name); it.dirty = false; it.del = false; return it; }
+const visibleIds = () => Object.values(lib.items).filter(x => !x.del).sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1))).map(x => x.id);
+function useActive() {
+  let id = lib.active;
+  if (!lib.items[id] || lib.items[id].del) id = visibleIds()[0];
+  if (!id) { lib.items[LINEUP_ID] = newItem(LINEUP_ID, "Alineación 1"); id = LINEUP_ID; }
+  lib.active = id; lineup = lib.items[id];
+}
+const nextId = () => { for (let n = 1; n < 1000; n++) if (!lib.items["L" + n]) return "L" + n; return null; };
 try {
-  const s = JSON.parse(localStorage.getItem(LINEUP_KEY));
-  if (s && s.lineup) { lineup = sanitize(s.lineup, s.lineup.t); lineupDirty = s.dirty === true; }
+  const st = JSON.parse(localStorage.getItem(LIB_KEY));
+  if (st && st.items && typeof st.items === "object") {
+    for (const [id, it] of Object.entries(st.items)) if (LIB_ID.test(id) && it) {
+      const o = newItem(id, it.name, it); o.t = Number(it.t) || 0; o.dirty = it.dirty === true; o.del = it.del === true; lib.items[id] = o;
+    }
+    lib.active = String(st.active || "");
+  } else {                                  // migra la alineación única de la versión anterior
+    const old = JSON.parse(localStorage.getItem(LINEUP_KEY));
+    if (old && old.lineup) { const o = newItem(LINEUP_ID, "Alineación 1", old.lineup); o.t = Number(old.lineup.t) || 0; o.dirty = old.dirty === true; lib.items[LINEUP_ID] = o; }
+  }
 } catch {}
-const saveLocal = () => { try { localStorage.setItem(LINEUP_KEY, JSON.stringify({ lineup, dirty: lineupDirty })); } catch {} };
+useActive();
+const saveLocal = () => { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch {} };
 const counts = f => { const [d, m, a] = f.split("-").map(Number); return { GK: 1, DEF: d, MID: m, ATT: a }; };
 function locate(pid) {
   const c = counts(lineup.f);
@@ -539,7 +567,7 @@ function placedSet() {
 function pruneSubs() { for (const k of Object.keys(lineup.s)) if (!lineup.b.includes(k)) delete lineup.s[k]; }
 function changed() {
   pruneSubs();
-  lineup.t = Date.now(); lineupDirty = true; saveLocal(); render(); schedulePush();
+  lineup.t = Date.now(); lineup.dirty = true; saveLocal(); render(); schedulePush();
 }
 function place(pid, tgt) {
   const src = locate(pid);
@@ -624,6 +652,9 @@ function render() {
   $("#benchChips").innerHTML = bench || `<span class="none">Arrastra aquí a los suplentes. Después indica el minuto y a quién reemplazan.</span>`;
   $("#counter").textContent = `${started}/11 en cancha`;
   $("#formSel").value = lineup.f;
+  $("#lineSel").innerHTML = visibleIds().map(id => `<option value="${id}">${esc(lib.items[id].name)}</option>`).join("");
+  $("#lineSel").value = lib.active;
+  $("#lineDel").disabled = visibleIds().length < 2;
   const n = players.filter(p => markOf(p.pid)).length;
   setStatus(n ? `${n} jugadores con posición asignada (GK, DEF, MID, ATT).` : "Todavía no hay jugadores con posición: márcalos en la columna Pos. de la tabla.");
 }
@@ -812,17 +843,21 @@ function setSync(state, detail = "") {
   $("#syncMsg").textContent = (T[state] || "") + (detail ? " Motivo: " + detail : "");
 }
 let pushTimer = null;
-function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushLineup, 500); }
-async function pushLineup() {
-  if (!CONFIG.estUrl || !sync.key || sync.busy || !lineupDirty) return;
+function schedulePush() { clearTimeout(pushTimer); pushTimer = setTimeout(pushAll, 500); }
+async function pushAll() {
+  if (!CONFIG.estUrl || !sync.key || sync.busy) return;
+  const todo = Object.values(lib.items).filter(x => x.dirty);
+  if (!todo.length) return;
   sync.busy = true; setSync("pending");
-  const snap = lineup.t;
   try {
-    const body = JSON.stringify({ f: lineup.f, l: lineup.l, b: lineup.b, s: lineup.s });
-    await estCall({ action: "set", pid: LINEUP_ID, v: await encV(body), t: snap, token: sync.token });
-    if (lineup.t === snap) { lineupDirty = false; saveLocal(); }
+    for (const it of todo) {
+      const snap = it.t;
+      const v = it.del ? "" : await encV(JSON.stringify({ n: it.name, f: it.f, l: it.l, b: it.b, s: it.s }));   // valor vacío = alineación eliminada
+      await estCall({ action: "set", pid: it.id, v, t: snap, token: sync.token });
+      if (it.t === snap) { it.dirty = false; saveLocal(); }
+    }
     sync.busy = false;
-    if (lineupDirty) return pushLineup();
+    if (Object.values(lib.items).some(x => x.dirty)) return pushAll();
     setSync("ok");
   } catch (err) { sync.busy = false; setSync(/token/i.test(err.message) ? "token" : "offline", explain(err)); }
 }
@@ -830,21 +865,28 @@ async function pull() {
   if (!CONFIG.estUrl || !sync.key) return;
   try {
     const j = await estCall({ action: "list" });
-    let remote = null, estChanged = false;
+    const remoteL = {};
+    let estChanged = false;
     for (const it of j.items || []) {
       const pid = String(it.pid), t = Number(it.t) || 0;
       let v; try { v = await decV(it.v); } catch { continue; }
       if (/^\d+$/.test(pid)) { const loc = estMap[pid]; if (!loc || t > loc.t) { estMap[pid] = { v: EST_OPTS.includes(v) ? v : "", t }; estChanged = true; } }
-      else if (pid === LINEUP_ID) remote = { t, v };
+      else if (LIB_ID.test(pid)) remoteL[pid] = { t, v };
     }
     let lineChanged = false;
-    if (remote && remote.t > lineup.t) {
-      try { lineup = sanitize(JSON.parse(remote.v), remote.t); lineupDirty = false; saveLocal(); lineChanged = true; } catch {}
-    } else if (!remote || remote.t < lineup.t) {
-      if (lineup.t > 0) { lineupDirty = true; saveLocal(); }
+    for (const [id, r] of Object.entries(remoteL)) {
+      const loc = lib.items[id];
+      if (loc && loc.t >= r.t) { if (loc.t > r.t) loc.dirty = true; continue; }
+      if (r.v === "") { const o = newItem(id, loc ? loc.name : "Alineación"); o.t = r.t; o.del = true; lib.items[id] = o; lineChanged = true; continue; }
+      try { const d = JSON.parse(r.v); const o = newItem(id, d.n, d); o.t = r.t; lib.items[id] = o; lineChanged = true; } catch {}
     }
+    for (const it of Object.values(lib.items)) if (!remoteL[it.id] && it.t > 0) it.dirty = true;
+    // la alineación inicial vacía de un dispositivo nuevo no debe quedar si el servicio ya tiene otras
+    const dflt = lib.items[LINEUP_ID];
+    if (dflt && dflt.t === 0 && !dflt.dirty && !remoteL[LINEUP_ID] && Object.values(remoteL).some(r => r.v !== "")) { delete lib.items[LINEUP_ID]; lineChanged = true; }
+    useActive(); saveLocal();
     if (estChanged || lineChanged) render();
-    if (lineupDirty) await pushLineup(); else setSync("ok");
+    if (Object.values(lib.items).some(x => x.dirty)) await pushAll(); else setSync("ok");
   } catch (err) { setSync("offline", explain(err)); }
 }
 
@@ -892,7 +934,7 @@ async function init() {
   const setSub = (pid, key, val) => {
     if (!lineup.b.includes(pid)) return;
     lineup.s[pid] = { m: "", o: "", ...(lineup.s[pid] || {}), [key]: val };
-    lineup.t = Date.now(); lineupDirty = true; saveLocal(); schedulePush();
+    lineup.t = Date.now(); lineup.dirty = true; saveLocal(); schedulePush();
   };
   $("#bench").addEventListener("input", e => {
     const i = e.target.closest(".mn input"); if (!i) return;
@@ -905,7 +947,30 @@ async function init() {
   });
   $("#clear").addEventListener("click", () => {
     if (!confirm("¿Vaciar la alineación (cancha y suplentes)?")) return;
-    const f = lineup.f; lineup = emptyLineup(); lineup.f = f; changed();
+    const keep = { id: lineup.id, name: lineup.name, f: lineup.f };
+    Object.assign(lineup, emptyLineup(), { f: keep.f, id: keep.id, name: keep.name, dirty: true, del: false }); changed();
+  });
+  const askName = (msg, def) => { const n = prompt(msg, def); return n === null || !n.trim() ? null : cleanName(n); };
+  const add = (name, o) => {
+    const id = nextId(); if (!id) { toast("Se alcanzó el máximo de alineaciones"); return; }
+    const it = newItem(id, name, o); it.t = Date.now(); it.dirty = true;
+    lib.items[id] = it; lib.active = id; useActive(); saveLocal(); render(); schedulePush();
+  };
+  $("#lineSel").addEventListener("change", e => {
+    const it = lib.items[e.target.value]; if (!it || it.del) return;
+    lib.active = it.id; useActive(); saveLocal(); render();
+  });
+  $("#lineNew").addEventListener("click", () => { const n = askName("Nombre de la nueva alineación:", `Alineación ${visibleIds().length + 1}`); if (n) add(n, { f: lineup.f }); });
+  $("#lineDup").addEventListener("click", () => {
+    const n = askName("Nombre de la copia:", `${lineup.name} (copia)`);
+    if (n) add(n, JSON.parse(JSON.stringify({ f: lineup.f, l: lineup.l, b: lineup.b, s: lineup.s })));
+  });
+  $("#lineRen").addEventListener("click", () => { const n = askName("Nuevo nombre:", lineup.name); if (n) { lineup.name = n; changed(); } });
+  $("#lineDel").addEventListener("click", () => {
+    if (visibleIds().length < 2) { toast("Debe quedar al menos una alineación"); return; }
+    if (!confirm(`¿Eliminar la alineación «${lineup.name}»?`)) return;
+    lineup.del = true; lineup.t = Date.now(); lineup.dirty = true;
+    useActive(); saveLocal(); render(); schedulePush();
   });
   $("#skToggle").addEventListener("click", () => {
     const pid = skPid; $("#skDlg").close();
