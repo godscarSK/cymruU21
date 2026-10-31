@@ -231,7 +231,10 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
 .sub select { min-height: 30px; flex: 1 1 0; min-width: 0; width: 0; max-width: none; }
 .sub label.po { flex: 1 1 0; min-width: 0; }
 .sub .chip { flex: 0 0 auto; }
-#benchChips { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 6px; }
+#benchChips { display: block; }
+.bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 6px; }
+.bgrp h3 { margin: 10px 0 4px; font-size: .75rem; letter-spacing: .06em; color: var(--muted); }
+.bgrp:first-child h3 { margin-top: 2px; }
 @media (max-width: 520px) { .sub { flex-wrap: wrap; } }
 
 </style>
@@ -631,7 +634,7 @@ function placeFree(pid, x, y) {
   removeAll(pid); lineup.l[at.line][at.i] = pid; setPos(at.line, at.i, x, y); changed();
 }
 function moveSub(pid, dir) {
-  const vis = lineup.b.filter(isElig), nb = vis[vis.indexOf(pid) + dir];
+  const vis = lineup.b.filter(x => isElig(x) && markOf(x) === markOf(pid)), nb = vis[vis.indexOf(pid) + dir];
   if (!nb) return;
   const a = lineup.b.indexOf(pid), b = lineup.b.indexOf(nb);
   [lineup.b[a], lineup.b[b]] = [lineup.b[b], lineup.b[a]];
@@ -699,13 +702,17 @@ function render() {
   }
   $("#pitch").innerHTML = pitch;
   const visB = lineup.b.filter(isElig);
-  const bench = visB.map((pid, bi) => {
+  const subRow = (pid, bi, n) => {
     const s = lineup.s[pid] || { m: "", o: "" };
     const others = lineup.b.filter(x => x !== pid && isElig(x));
     const opts = `<option value="">—</option>` + starters.map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>${esc(sn.get(x.pid))} (${x.ln})</option>`).join("") +
       others.map(x => `<option value="${x}"${x === s.o ? " selected" : ""}>${esc(sn.get(x))} (suplente)</option>`).join("");
-    return `<div class="sub" data-pid="${pid}"><span class="mv"><button type="button" data-mv="-1" data-pid="${pid}" aria-label="Subir en la lista"${bi === 0 ? " disabled" : ""}>↑</button><button type="button" data-mv="1" data-pid="${pid}" aria-label="Bajar en la lista"${bi === visB.length - 1 ? " disabled" : ""}>↓</button></span>${chipHTML(byPid.get(pid), sn, outOf[pid])}<label class="mn">Entra al min <input type="text" inputmode="numeric" maxlength="8" size="4" placeholder="—" data-pid="${pid}" value="${esc(s.m)}"></label>` +
+    return `<div class="sub" data-pid="${pid}"><span class="mv"><button type="button" data-mv="-1" data-pid="${pid}" aria-label="Subir en la lista"${bi === 0 ? " disabled" : ""}>↑</button><button type="button" data-mv="1" data-pid="${pid}" aria-label="Bajar en la lista"${bi === n - 1 ? " disabled" : ""}>↓</button></span>${chipHTML(byPid.get(pid), sn, outOf[pid])}<label class="mn">Entra al min <input type="text" inputmode="numeric" maxlength="8" size="4" placeholder="—" data-pid="${pid}" value="${esc(s.m)}"></label>` +
       `<label class="po">por <select data-pid="${pid}">${opts}</select></label></div>`;
+  };
+  const bench = ["GK", "DEF", "MID", "ATT"].map(ln => {
+    const g = visB.filter(pid => markOf(pid) === ln);
+    return g.length ? `<section class="bgrp"><h3>${ln}</h3><div class="bgrid">${g.map((pid, bi) => subRow(pid, bi, g.length)).join("")}</div></section>` : "";
   }).join("");
   $("#benchChips").innerHTML = bench || `<span class="none">Arrastra aquí a los suplentes. Después indica el minuto y a quién reemplazan.</span>`;
   $("#counter").textContent = `${started}/11 en cancha`;
