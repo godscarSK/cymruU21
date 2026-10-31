@@ -1001,6 +1001,8 @@ try {
   const d = JSON.parse(localStorage.getItem(EST_DIRTY_KEY));
   if (Array.isArray(d)) d.forEach(k => sync.dirty.add(String(k)));
 } catch {}
+for (const k of [...sync.dirty]) if (!/^\d+$/.test(k)) sync.dirty.delete(k);      // solo los números de jugador son asignaciones
+for (const k of Object.keys(estMap)) if (!/^\d+$/.test(k)) delete estMap[k];
 const saveEst = () => { try { localStorage.setItem(EST_KEY, JSON.stringify(estMap)); localStorage.setItem(EST_DIRTY_KEY, JSON.stringify([...sync.dirty])); } catch {} };
 const estOf = p => { const e = estMap[p.pid]; return e && EST_OPTS.includes(e.v) ? e.v : ""; };
 function setEst(pid, v) {
@@ -1093,7 +1095,8 @@ async function pushDirty() {
     for (const pid of [...sync.dirty]) {
       const e = estMap[pid];
       if (!e) { sync.dirty.delete(pid); continue; }
-      await estCall({ action: "set", pid, v: await encV(e.v), t: e.t, token: sync.token });
+      try { await estCall({ action: "set", pid, v: await encV(e.v), t: e.t, token: sync.token }); }
+      catch (err) { if (/pid inv/i.test(err.message)) err.message += ` (pid enviado: «${pid}»)`; throw err; }
       if (estMap[pid] === e) sync.dirty.delete(pid);
       saveEst();
     }

@@ -230,8 +230,9 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
 .sub { padding: 4px 8px; gap: 4px 10px; flex-wrap: nowrap; min-width: 0; box-sizing: border-box; width: auto; }
 .sub label { white-space: nowrap; font-size: .8rem; }
 .sub input { width: 3.6rem; min-height: 30px; }
-.sub select { min-height: 30px; flex: 1 1 0; min-width: 0; width: 0; max-width: none; }
-.sub label.po { flex: 1 1 0; min-width: 0; }
+.sub select { min-height: 30px; flex: 0 0 auto; width: auto; min-width: 3.6rem; max-width: none; font-weight: 700; }
+.sub select option { font-weight: 700; }
+.sub label.po { flex: 0 0 auto; }
 .sub .chip { flex: 0 0 auto; }
 #benchChips { display: block; }
 .bgrid { display: grid; grid-template-columns: minmax(0, 480px); gap: 6px; }
