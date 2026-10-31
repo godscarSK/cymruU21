@@ -260,6 +260,7 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
     <label>Formación <select id="formSel"></select></label>
     <button class="btn" id="clear" type="button">Vaciar</button>
     <button class="btn" id="save" type="button">Guardar alineación</button>
+    <button class="btn" id="discard" type="button" title="Descartar los cambios sin guardar y cargar la versión de la nube">Descartar cambios</button>
     <button class="btn" id="posReset" type="button" title="Volver a las posiciones iniciales de la cancha">Restablecer posiciones</button>
     <span class="counter" id="counter">0/11 en cancha</span>
     <span class="grow"></span>
@@ -1043,6 +1044,16 @@ async function init() {
     if (sync.state === "ok") toast("Alineación guardada");
   });
   window.addEventListener("beforeunload", e => { if (Object.values(lib.items).some(x => x.dirty) && sync.key) { e.preventDefault(); e.returnValue = ""; } });
+  $("#discard").addEventListener("click", async () => {
+    if (!CONFIG.estUrl || !sync.key) { toast("La sincronización no está configurada"); return; }
+    const dirty = Object.values(lib.items).filter(x => x.dirty);
+    if (!dirty.length) { toast("No hay cambios sin guardar"); return; }
+    if (!confirm("¿Descartar los cambios sin guardar de este dispositivo y cargar lo que está en la nube?")) return;
+    for (const it of dirty) { it.dirty = false; it.t = 0; it.del = false; }   // t = 0: cualquier versión de la nube es más nueva y la reemplaza
+    saveLocal(); setSync("pending");
+    await pull();
+    toast("Se cargó la versión de la nube");
+  });
   $("#posReset").addEventListener("click", () => { lineup.p = {}; changed(); toast("Posiciones restablecidas"); });
   $("#bench").addEventListener("change", e => {
     const sel = e.target.closest(".po select"); if (!sel) return;

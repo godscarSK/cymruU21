@@ -120,3 +120,5 @@ Página para armar la alineación del próximo partido. Se abre con el botón **
 ### Guardar alineación
 
 Los cambios de la alineación (incluidas las posiciones en la cancha y el orden de suplentes) **no se envían solos**: se guardan en el dispositivo y aparece «Cambios sin guardar». Pulsa **Guardar alineación** para subirlos a la nube; los demás dispositivos los reciben al abrir la página. Una alineación con cambios sin guardar no es reemplazada por la versión de la nube. Las marcas de posición (columna Pos.) siguen sincronizándose automáticamente.
+
+**Descartar cambios** abandona lo no guardado en este dispositivo y carga la versión de la nube (útil si vaciaste o cambiaste algo por error y no quieres sobrescribir lo guardado).
