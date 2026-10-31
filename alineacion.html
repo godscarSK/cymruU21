@@ -137,7 +137,7 @@ a.btn:hover { filter: brightness(0.96); }
 .toolbar .grow { flex: 1 1 auto; }
 .counter { font-weight: 700; font-variant-numeric: tabular-nums; }
 #syncMsg { color: var(--muted); font-size: .88rem; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 350px); gap: 16px; align-items: start; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 450px); gap: 16px; align-items: start; }
 @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .pitchcol { order: -1; } }
 .pool { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 14px; align-content: start; }
 .pool .hint { grid-column: 1 / -1; }
@@ -165,7 +165,7 @@ a.btn:hover { filter: brightness(0.96); }
 .ghost { position: fixed; z-index: 100; pointer-events: none; transform: translate(-50%, -60%); box-shadow: 0 6px 18px rgba(0,0,0,.35); cursor: grabbing; }
 .pitchcol { min-width: 0; }
 .pitch {
-  position: relative; width: 100%; max-width: max(240px, min(350px, calc((100vh - 60px) / 1.4))); margin: 0 auto; aspect-ratio: 5 / 7; border: 3px solid #e8f3ea; border-radius: 6px; color: #fff;
+  position: relative; width: 100%; max-width: max(240px, min(450px, calc((100vh - 60px) / 1.4))); margin: 0 auto; aspect-ratio: 5 / 7; border: 3px solid #e8f3ea; border-radius: 6px; color: #fff;
   background: repeating-linear-gradient(0deg, #2f7a4d 0 8.33%, #2a7046 8.33% 16.66%);
 }
 .pitch::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px solid rgba(255,255,255,.5); pointer-events: none; }
@@ -183,7 +183,7 @@ a.btn:hover { filter: brightness(0.96); }
 .slot .chip { font-size: .74rem; padding-left: 5px; padding-right: 5px; max-width: 100%; overflow: hidden; }
 .chip .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .chip .inj, .chip .red, .chip .outb { flex: 0 0 auto; }
-.slot.has { border: 0; padding: 0; width: auto; max-width: max(var(--w, 20%), 7rem); cursor: default; }
+.slot.has { border: 0; padding: 0; width: auto; max-width: max(var(--w, 20%), 5.2rem); cursor: default; }
 .slot.over { background: rgba(255,255,255,.25); border-color: #fff; }
 .slot.mismatch .chip { box-shadow: 0 0 0 2px #f5c400; }
 .chip .outb + .outb { margin-left: -2px; }
@@ -712,9 +712,7 @@ function render() {
   const visB = lineup.b.filter(isElig);
   const subRow = (pid, bi, n) => {
     const s = lineup.s[pid] || { m: "", o: "" };
-    const others = lineup.b.filter(x => x !== pid && isElig(x));
-    const opts = `<option value="">—</option>` + starters.map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>${esc(sn.get(x.pid))} (${x.ln})</option>`).join("") +
-      others.map(x => `<option value="${x}"${x === s.o ? " selected" : ""}>${esc(sn.get(x))} (suplente)</option>`).join("");
+    const opts = `<option value="">—</option>` + starters.map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>[${x.ln}] ${esc(sn.get(x.pid))}</option>`).join("");
     return `<div class="sub" data-pid="${pid}"><span class="mv"><button type="button" data-mv="-1" data-pid="${pid}" aria-label="Subir en la lista"${bi === 0 ? " disabled" : ""}>↑</button><button type="button" data-mv="1" data-pid="${pid}" aria-label="Bajar en la lista"${bi === n - 1 ? " disabled" : ""}>↓</button></span>${chipHTML(byPid.get(pid), sn, outOf[pid])}<label class="mn">Entra al min <input type="text" inputmode="numeric" maxlength="8" size="4" placeholder="—" data-pid="${pid}" value="${esc(s.m)}"></label>` +
       `<label class="po">por <select data-pid="${pid}">${opts}</select></label></div>`;
   };
