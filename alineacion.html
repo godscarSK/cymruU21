@@ -265,7 +265,7 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
     <p class="lede" id="lede">Cargando…</p>
   </header>
   <section class="toolbar" aria-label="Opciones">
-    <a class="btn" href="index.html" title="Volver a la tabla de jugadores">← Tabla</a>
+    <a class="btn" href="index.html" title="Volver a la tabla de jugadores">← TABLA</a>
     <label>Alineación <select id="lineSel"></select></label>
     <button class="btn" id="lineNew" type="button" title="Crear una alineación nueva">Nueva</button>
     <button class="btn" id="lineDup" type="button" title="Copiar la alineación actual">Duplicar</button>
@@ -1086,17 +1086,28 @@ async function init() {
     await pull();
     toast("Se cargó la versión de la nube");
   });
-  // El número se registra mientras se escribe (sin redibujar), para que «Guardar» lo incluya aunque el teclado siga abierto (móvil).
-  $("#pitch").addEventListener("input", e => {
+  // Número de camiseta: si ya lo tiene otro titular, se intercambian. Se calcula siempre desde el estado al enfocar el campo, así cada tecla es idempotente.
+  let numSnap = null;
+  const snap = () => { if (!numSnap) numSnap = { j: { ...lineup.j }, nums: shirtNumbers() }; };
+  const applyNum = (pid, text) => {
+    snap();
+    const t = text.trim(), v = Math.round(+t), ok = /^\d{1,2}$/.test(t) && v >= 1;
+    lineup.j = { ...numSnap.j, ...numSnap.nums };               // al editar uno, los demás conservan el número que se ve (no se corren)
+    if (!ok) { delete lineup.j[pid]; return; }       // vacío o inválido: vuelve al número por defecto
+    const prev = numSnap.nums[pid], other = Object.keys(numSnap.nums).find(q => q !== pid && numSnap.nums[q] === v);
+    lineup.j[pid] = v;
+    if (other && prev) lineup.j[other] = prev;
+  };
+  $("#pitch").addEventListener("focusin", e => { if (e.target.matches && e.target.matches("input.num")) { numSnap = null; snap(); } });
+  $("#pitch").addEventListener("input", e => {                      // se registra mientras se escribe (sin redibujar) para que «Guardar» lo incluya aunque el teclado siga abierto
     const i = e.target.closest("input.num"); if (!i || !lineup.l) return;
-    const t = i.value.trim(), v = Math.round(+t);
-    if (/^\d{1,2}$/.test(t) && v >= 1) lineup.j[i.dataset.pid] = v; else if (t === "") delete lineup.j[i.dataset.pid]; else return;
+    if (!/^\d{1,2}$/.test(i.value.trim())) return;
+    applyNum(i.dataset.pid, i.value);
     lineup.t = Date.now(); lineup.dirty = true; saveLocal(); schedulePush();
   });
   $("#pitch").addEventListener("change", e => {
     const i = e.target.closest("input.num"); if (!i) return;
-    const v = Math.round(+i.value.trim());
-    if (/^\d{1,2}$/.test(i.value.trim()) && v >= 1) lineup.j[i.dataset.pid] = v; else delete lineup.j[i.dataset.pid];   // vacío o inválido: vuelve al número por defecto
+    applyNum(i.dataset.pid, i.value); numSnap = null;
     changed();
   });
   $("#pitch").addEventListener("keydown", e => { if (e.target.matches("input.num") && e.key === "Enter") e.target.blur(); });
