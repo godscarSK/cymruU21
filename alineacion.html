@@ -137,12 +137,14 @@ a.btn:hover { filter: brightness(0.96); }
 .toolbar .grow { flex: 1 1 auto; }
 .counter { font-weight: 700; font-variant-numeric: tabular-nums; }
 #syncMsg { color: var(--muted); font-size: .88rem; }
-.layout { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; align-items: start; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 350px); gap: 16px; align-items: start; }
 @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .pitchcol { order: -1; } }
-.pool { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 80vh; overflow: auto; }
+.pool { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 14px; align-content: start; }
+.pool .hint { grid-column: 1 / -1; }
+.grp { min-width: 0; }
 .pool.over, .bench.over { outline: 3px dashed var(--accent); outline-offset: -3px; }
 .pool h2 { margin: 12px 0 6px; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
-.pool h2:first-child { margin-top: 0; }
+.pool h2 { margin-top: 4px; }
 .pool .hint { color: var(--muted); font-size: .85rem; margin: 0 0 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 8px; }
 .chip {
@@ -163,7 +165,7 @@ a.btn:hover { filter: brightness(0.96); }
 .ghost { position: fixed; z-index: 100; pointer-events: none; transform: translate(-50%, -60%); box-shadow: 0 6px 18px rgba(0,0,0,.35); cursor: grabbing; }
 .pitchcol { min-width: 0; }
 .pitch {
-  position: relative; width: 100%; max-width: max(320px, min(520px, calc((100vh - 60px) / 1.4))); margin: 0 auto; aspect-ratio: 5 / 7; border: 3px solid #e8f3ea; border-radius: 6px; color: #fff;
+  position: relative; width: 100%; max-width: max(240px, min(350px, calc((100vh - 60px) / 1.4))); margin: 0 auto; aspect-ratio: 5 / 7; border: 3px solid #e8f3ea; border-radius: 6px; color: #fff;
   background: repeating-linear-gradient(0deg, #2f7a4d 0 8.33%, #2a7046 8.33% 16.66%);
 }
 .pitch::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px solid rgba(255,255,255,.5); pointer-events: none; }
@@ -178,7 +180,7 @@ a.btn:hover { filter: brightness(0.96); }
   cursor: grab; touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
 .slot.dragging { opacity: .35; }
-.slot .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.slot .chip { font-size: .74rem; padding-left: 5px; padding-right: 5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .slot.has { border: 0; padding: 0; width: auto; max-width: max(var(--w, 20%), 4.6rem); cursor: default; }
 .slot.over { background: rgba(255,255,255,.25); border-color: #fff; }
 .slot.mismatch .chip { box-shadow: 0 0 0 2px #f5c400; }
@@ -222,6 +224,15 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
 .sub .mv { display: flex; flex-direction: column; gap: 2px; }
 .sub .mv button { font: inherit; font-size: .75rem; line-height: 1; width: 26px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--ink); cursor: pointer; }
 .sub .mv button:disabled { opacity: .35; cursor: default; }
+
+.sub { padding: 4px 8px; gap: 4px 10px; flex-wrap: nowrap; min-width: 0; box-sizing: border-box; width: auto; }
+.sub label { white-space: nowrap; font-size: .8rem; }
+.sub input { width: 3.6rem; min-height: 30px; }
+.sub select { min-height: 30px; flex: 1 1 0; min-width: 0; width: 0; max-width: none; }
+.sub label.po { flex: 1 1 0; min-width: 0; }
+.sub .chip { flex: 0 0 auto; }
+#benchChips { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 6px; }
+@media (max-width: 520px) { .sub { flex-wrap: wrap; } }
 
 </style>
 <script src="config.js" onerror="void 0"></script>
@@ -663,7 +674,7 @@ function render() {
   let html = `<p class="hint">Arrastra un nombre a la cancha. Toca el apellido para ver sus skills.</p>`;
   for (const m of EST_OPTS) {
     const g = avail.filter(p => markOf(p.pid) === m).sort((a, b) => sn.get(a.pid).localeCompare(sn.get(b.pid), "es"));
-    html += `<h2><span>${m}</span><span>${g.length}</span></h2><div class="chips">${g.map(p => chipHTML(p, sn)).join("")}</div>`;
+    html += `<section class="grp"><h2><span>${m}</span><span>${g.length}</span></h2><div class="chips">${g.map(p => chipHTML(p, sn)).join("")}</div></section>`;
   }
   $("#pool").innerHTML = html;
   // sustituciones: titular → quién lo reemplaza y en qué minuto
@@ -682,7 +693,7 @@ function render() {
       if (ok) started++;
       const p = ok ? byPid.get(pid) : null;
       if (ok) starters.push({ pid, ln });
-      const [x, y] = slotPos(ln, i, c[ln]), w = (100 / (c[ln] + 1) * 1.15).toFixed(1);
+      const [x, y] = slotPos(ln, i, c[ln]), w = (100 / (c[ln] + 1) * 1.0).toFixed(1);
       pitch += `<div class="slot${ok ? " has" : ""}${ok && markOf(pid) !== ln ? " mismatch" : ""}" data-line="${ln}" data-i="${i}" style="left:${x}%;top:${y}%;--w:${w}%">${p ? chipHTML(p, sn, outOf[pid]) : ln}</div>`;
     }
   }
