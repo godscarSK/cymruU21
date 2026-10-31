@@ -243,6 +243,12 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
 .slot .chip.has-out .outb { flex: 0 0 auto; }
 .slot:has(.has-out) { z-index: 3; }
 .slot.has:hover { z-index: 4; }
+.slot { overflow: visible; }
+.slot .num { position: absolute; left: 50%; top: -17px; transform: translateX(-50%); width: 24px; height: 18px; padding: 0; text-align: center; font: inherit; font-size: .72rem; font-weight: 700; color: #fff; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.6); border-radius: 9px; cursor: text; user-select: text; -webkit-user-select: text; }
+.slot .num:focus { background: #fff; color: #111; outline: 2px solid var(--focus); }
+.slot .chip.has-out { flex-wrap: nowrap; justify-content: flex-start; }
+.slot .chip.has-out .nm { flex: 0 1 auto; text-align: left; }
+.slot.has:has(.has-out) { max-width: 12rem; }
 
 </style>
 <script src="config.js" onerror="void 0"></script>
@@ -533,7 +539,7 @@ const markOf = pid => { const e = estMap[pid]; return e && EST_OPTS.includes(e.v
 const isElig = pid => byPid.has(pid) && !!markOf(pid);
 
 /* ─────────────── Alineación ─────────────── */
-const emptyLineup = () => ({ f: "4-4-2", l: { GK: [""], DEF: ["", "", "", "", ""], MID: ["", "", "", "", ""], ATT: ["", "", "", ""] }, b: [], s: {}, p: {}, t: 0 });   // b = suplentes; s[pid] = { m: minuto en que entra, o: pid del titular al que reemplaza }
+const emptyLineup = () => ({ f: "4-4-2", l: { GK: [""], DEF: ["", "", "", "", ""], MID: ["", "", "", "", ""], ATT: ["", "", "", ""] }, b: [], s: {}, p: {}, j: {}, t: 0 });   // b = suplentes; s[pid] = { m: minuto en que entra, o: pid del titular al que reemplaza }
 // Biblioteca: varias alineaciones con nombre. Cada una se guarda en el servicio con su propia clave (L1, L2, …).
 const LIB_KEY = "cantera:lineups";
 let lib = { items: {}, active: "" };     // items[id] = { id, name, f, l, b, s, t, dirty, del }
@@ -549,6 +555,9 @@ function sanitize(o, t) {
   if (o.p && typeof o.p === "object") for (const [k, v] of Object.entries(o.p)) {      // posiciones libres de los espacios: p["DEF0"] = [x %, y %]
     if (/^(GK|DEF|MID|ATT)\d$/.test(k) && Array.isArray(v) && Number.isFinite(+v[0]) && Number.isFinite(+v[1]))
       L.p[k] = [Math.min(94, Math.max(6, Math.round(+v[0] * 10) / 10)), Math.min(96, Math.max(4, Math.round(+v[1] * 10) / 10))];
+  }
+  if (o.j && typeof o.j === "object") for (const [k, v] of Object.entries(o.j)) {        // números de camiseta editados a mano: j[pid] = 1..99
+    const x = Math.round(+v); if (/^\d+$/.test(k) && x >= 1 && x <= 99) L.j[k] = x;
   }
   L.b = Array.isArray(o.b) ? [...new Set(o.b.map(String).filter(x => /^\d+$/.test(x)))] : [];
   if (o.s && typeof o.s === "object") for (const [k, v] of Object.entries(o.s)) {
@@ -600,7 +609,23 @@ function placedSet() {
   for (const p of lineup.b) if (isElig(p)) s.add(p);
   return s;
 }
-function pruneSubs() { for (const k of Object.keys(lineup.s)) if (!lineup.b.includes(k)) delete lineup.s[k]; }
+function pruneSubs() {
+  for (const k of Object.keys(lineup.s)) if (!lineup.b.includes(k)) delete lineup.s[k];
+  const pl = placedSet(); for (const k of Object.keys(lineup.j)) if (!pl.has(k)) delete lineup.j[k];
+}
+// Número de cada titular: el editado a mano o, si no hay, el primer número libre del 1 al 99 en orden GK, DEF, MID, ATT (1 al 11 por defecto).
+function shirtNumbers() {
+  const c = counts(lineup.f), order = [], out = {};
+  for (const ln of ["GK", "DEF", "MID", "ATT"]) for (let i = 0; i < c[ln]; i++) { const p = lineup.l[ln][i]; if (p && isElig(p)) order.push(p); }
+  const used = new Set(order.filter(p => lineup.j[p]).map(p => lineup.j[p]));
+  let n = 1;
+  for (const p of order) {
+    if (lineup.j[p]) { out[p] = lineup.j[p]; continue; }
+    while (used.has(n)) n++;
+    out[p] = n; used.add(n);
+  }
+  return out;
+}
 function changed() {
   pruneSubs();
   lineup.t = Date.now(); lineup.dirty = true; saveLocal(); render(); schedulePush();
@@ -697,7 +722,7 @@ function render() {
   for (const k of Object.keys(outOf)) outOf[k].sort((a, b) => (parseFloat(a.m) || 999) - (parseFloat(b.m) || 999));
   // cancha
   let started = 0, pitch = `<div class="marks"></div>`;
-  const starters = [];
+  const starters = [], shirt = shirtNumbers();
   for (const ln of LINES) {
     for (let i = 0; i < c[ln]; i++) {
       const pid = lineup.l[ln][i], ok = pid && isElig(pid);
@@ -705,14 +730,14 @@ function render() {
       const p = ok ? byPid.get(pid) : null;
       if (ok) starters.push({ pid, ln });
       const [x, y] = slotPos(ln, i, c[ln]), w = (100 / (c[ln] + 1) * 1.0).toFixed(1);
-      pitch += `<div class="slot${ok ? " has" : ""}${ok && markOf(pid) !== ln ? " mismatch" : ""}" data-line="${ln}" data-i="${i}" style="left:${x}%;top:${y}%;--w:${w}%">${p ? chipHTML(p, sn, outOf[pid]) : ln}</div>`;
+      pitch += `<div class="slot${ok ? " has" : ""}${ok && markOf(pid) !== ln ? " mismatch" : ""}" data-line="${ln}" data-i="${i}" style="left:${x}%;top:${y}%;--w:${w}%">${p ? `<input class="num" type="text" inputmode="numeric" maxlength="2" value="${shirt[pid]}" data-pid="${pid}" aria-label="Número de ${esc(sn.get(pid))}">` + chipHTML(p, sn, outOf[pid]) : ln}</div>`;
     }
   }
   $("#pitch").innerHTML = pitch;
   const visB = lineup.b.filter(isElig);
   const subRow = (pid, bi, n) => {
     const s = lineup.s[pid] || { m: "", o: "" };
-    const opts = `<option value="">—</option>` + starters.map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>[${x.ln}] ${esc(sn.get(x.pid))}</option>`).join("");
+    const opts = `<option value="">—</option>` + [...starters].sort((a, b) => shirt[a.pid] - shirt[b.pid]).map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>${shirt[x.pid]}</option>`).join("");
     return `<div class="sub" data-pid="${pid}"><span class="mv"><button type="button" data-mv="-1" data-pid="${pid}" aria-label="Subir en la lista"${bi === 0 ? " disabled" : ""}>↑</button><button type="button" data-mv="1" data-pid="${pid}" aria-label="Bajar en la lista"${bi === n - 1 ? " disabled" : ""}>↓</button></span>${chipHTML(byPid.get(pid), sn, outOf[pid])}<label class="mn">Entra al min <input type="text" inputmode="numeric" maxlength="8" size="4" placeholder="—" data-pid="${pid}" value="${esc(s.m)}"></label>` +
       `<label class="po">por <select data-pid="${pid}">${opts}</select></label></div>`;
   };
@@ -947,7 +972,7 @@ async function pushAll() {
   try {
     for (const it of todo) {
       const snap = it.t;
-      const v = it.del ? "" : await encV(JSON.stringify({ n: it.name, f: it.f, l: it.l, b: it.b, s: it.s, p: it.p }));   // valor vacío = alineación eliminada
+      const v = it.del ? "" : await encV(JSON.stringify({ n: it.name, f: it.f, l: it.l, b: it.b, s: it.s, p: it.p, j: it.j }));   // valor vacío = alineación eliminada
       await estCall({ action: "set", pid: it.id, v, t: snap, token: sync.token });
       if (it.t === snap) { it.dirty = false; saveLocal(); }
     }
@@ -1059,6 +1084,13 @@ async function init() {
     await pull();
     toast("Se cargó la versión de la nube");
   });
+  $("#pitch").addEventListener("change", e => {
+    const i = e.target.closest("input.num"); if (!i) return;
+    const v = Math.round(+i.value.trim());
+    if (/^\d{1,2}$/.test(i.value.trim()) && v >= 1) lineup.j[i.dataset.pid] = v; else delete lineup.j[i.dataset.pid];   // vacío o inválido: vuelve al número por defecto
+    changed();
+  });
+  $("#pitch").addEventListener("keydown", e => { if (e.target.matches("input.num") && e.key === "Enter") e.target.blur(); });
   $("#posReset").addEventListener("click", () => { lineup.p = {}; changed(); toast("Posiciones restablecidas"); });
   $("#bench").addEventListener("change", e => {
     const sel = e.target.closest(".po select"); if (!sel) return;

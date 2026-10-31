@@ -122,3 +122,5 @@ Página para armar la alineación del próximo partido. Se abre con el botón **
 Los cambios de la alineación (incluidas las posiciones en la cancha y el orden de suplentes) **no se envían solos**: se guardan en el dispositivo y aparece «Cambios sin guardar». Pulsa **Guardar alineación** para subirlos a la nube; los demás dispositivos los reciben al abrir la página. Una alineación con cambios sin guardar no es reemplazada por la versión de la nube. Las marcas de posición (columna Pos.) siguen sincronizándose automáticamente.
 
 **Descartar cambios** abandona lo no guardado en este dispositivo y carga la versión de la nube (útil si vaciaste o cambiaste algo por error y no quieres sobrescribir lo guardado).
+
+**Números de camiseta**: cada titular muestra un número sobre su casilla (por defecto 1 al 11 en orden GK, DEF, MID, ATT). Se edita escribiendo en el número; si lo borras vuelve al valor por defecto. Se guarda con la alineación. El desplegable «por» de los suplentes muestra esos números, y el minuto de sustitución aparece junto al apellido en la cancha.
