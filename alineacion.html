@@ -1068,6 +1068,7 @@ async function init() {
     moveSub(b.dataset.pid, +b.dataset.mv);
   });
   $("#save").addEventListener("click", async () => {
+    if (document.activeElement && document.activeElement.matches && document.activeElement.matches("input.num")) document.activeElement.blur();   // confirma el número que se está editando
     if (!CONFIG.estUrl || !sync.key) { toast("La sincronización no está configurada"); return; }
     if (!Object.values(lib.items).some(x => x.dirty)) { toast("No hay cambios por guardar"); return; }
     if (sync.busy) return;
@@ -1084,6 +1085,13 @@ async function init() {
     saveLocal(); setSync("pending");
     await pull();
     toast("Se cargó la versión de la nube");
+  });
+  // El número se registra mientras se escribe (sin redibujar), para que «Guardar» lo incluya aunque el teclado siga abierto (móvil).
+  $("#pitch").addEventListener("input", e => {
+    const i = e.target.closest("input.num"); if (!i || !lineup.l) return;
+    const t = i.value.trim(), v = Math.round(+t);
+    if (/^\d{1,2}$/.test(t) && v >= 1) lineup.j[i.dataset.pid] = v; else if (t === "") delete lineup.j[i.dataset.pid]; else return;
+    lineup.t = Date.now(); lineup.dirty = true; saveLocal(); schedulePush();
   });
   $("#pitch").addEventListener("change", e => {
     const i = e.target.closest("input.num"); if (!i) return;
