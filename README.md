@@ -124,3 +124,7 @@ Los cambios de la alineación (incluidas las posiciones en la cancha y el orden 
 **Descartar cambios** abandona lo no guardado en este dispositivo y carga la versión de la nube (útil si vaciaste o cambiaste algo por error y no quieres sobrescribir lo guardado).
 
 **Números de camiseta**: cada titular muestra un número sobre su casilla (por defecto 1 al 11 en orden GK, DEF, MID, ATT). Se edita escribiendo en el número; si lo borras vuelve al valor por defecto. Se guarda con la alineación. El desplegable «por» de los suplentes muestra esos números, y el minuto de sustitución aparece junto al apellido en la cancha.
+
+### Lista de jugadores desde la API
+
+`fetch-players.mjs` puede obtener los PID de `GET /national/{teamId}/pool`: define el id de la selección con la variable `SOKKER_NATIONAL_ID` (o en la constante `NATIONAL_TEAM_ID` del script) y, si el servicio lo exige, `SOKKER_USER` y `SOKKER_PASS`. Sin ese id, el script sigue leyendo la hoja de Google como antes. Con la API se pierden las skills y los nombres que venían en la hoja (las skills completas siguen saliendo de `/player/{pid}` cuando la API las entrega).
