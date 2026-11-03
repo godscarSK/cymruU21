@@ -167,7 +167,15 @@ td.c-name { text-align: left; }
 tbody tr:nth-child(even) td { background-color: var(--zebra); }
 tbody tr:hover td { background-color: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
 
-th.c-n, td.c-n { width: 3.2rem; min-width: 3.2rem; color: var(--muted); }
+th.c-n, td.c-n { width: 4.2rem; min-width: 4.2rem; color: var(--muted); }
+td.c-n .rn { display: inline-block; min-width: 1.6em; }
+.rowhide { font: inherit; font-size: .72rem; line-height: 1; width: 1.35rem; height: 1.35rem; padding: 0; margin-left: 2px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; opacity: .55; }
+.rowhide:hover, .rowhide:focus-visible { opacity: 1; border-color: var(--line); color: var(--ink); }
+.rowhide:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+tr.is-hidden td { opacity: .45; }
+tr.is-hidden td.c-n { opacity: 1; }
+tr.is-hidden td.c-n .rn { opacity: .45; }
+tr.is-hidden .rowhide { opacity: 1; color: var(--ink); }
 th.c-est, td.c-est { width: 5.6rem; min-width: 5.6rem; padding-left: 4px; padding-right: 4px; }
 /* Columnas inmovilizadas (# … Forma): la posición la calcula applyFreeze() según el ancho real de cada columna. */
 td.frz { position: sticky; z-index: 1; background-color: var(--panel); }
@@ -298,7 +306,7 @@ dialog.dlg .msg { min-height: 1.3em; margin: 0 0 10px; color: var(--accent); fon
 dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 640px) {
-  th.c-n, td.c-n { width: 2.6rem; min-width: 2.6rem; padding-left: 6px; padding-right: 6px; }
+  th.c-n, td.c-n { width: 3.6rem; min-width: 3.6rem; padding-left: 4px; padding-right: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .progress > i { transition: none; } }
 </style>
@@ -369,6 +377,8 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
       <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
       <button class="btn" id="onlyU21" type="button" aria-pressed="false" title="Mostrar solo los jugadores citados a la selección (marca U21)">U21</button>
+      <button class="btn" id="showHidden" type="button" aria-pressed="false" hidden title="Ver las filas ocultas a mano (atenuadas) para volver a mostrarlas una por una">Filas ocultas (0)</button>
+      <button class="btn" id="unhideAll" type="button" hidden title="Volver a mostrar todas las filas ocultas a mano">Mostrar filas</button>
       <button class="btn" id="onlyChanges" type="button" aria-pressed="false" title="Mostrar solo los jugadores con cambios en sus skills respecto a la semana anterior (subidas o bajadas)">Cambios</button>
       <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
       <button class="btn primary" id="copy" type="button" title="Copiar la tabla visible para pegarla en una planilla">CSV</button>
@@ -715,7 +725,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, showHidden: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1146,9 +1156,21 @@ function sortValue(p, key) {
 }
 
 const hasChange = p => !!p.prev && SKILL_COLUMNS.some(c => { const v = p.skills?.[c.skill], b = p.prev[c.skill]; return Number.isFinite(v) && Number.isFinite(b) && v !== b; });
-function visibleRows() {
+// Filas ocultas a mano (por PID). Se recuerdan en este navegador.
+const HIDDEN_KEY = "cantera:hiddenrows";
+const HIDDEN = new Set();
+try { const h = JSON.parse(localStorage.getItem(HIDDEN_KEY)); if (Array.isArray(h)) h.forEach(x => HIDDEN.add(String(x))); } catch {}
+const saveHidden = () => { try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...HIDDEN])); } catch {} };
+function updateHiddenUI() {
+  const n = HIDDEN.size;
+  const b = $("#showHidden"), a = $("#unhideAll");
+  if (b) { b.hidden = n === 0 && !state.showHidden; b.textContent = `Filas ocultas (${n})`; b.setAttribute("aria-pressed", String(state.showHidden)); }
+  if (a) a.hidden = n === 0;
+}
+function visibleRows(withHidden = false) {
   const q = state.q.trim().toLowerCase();
   const out = state.players.filter(p => {
+    if (!withHidden && HIDDEN.has(p.pid)) return false;
     if (q && !(`${p.name} ${state.showTeam ? p.team : ""} ${p.pid}`.toLowerCase().includes(q))) return false;
     if (p.age != null && AGES.includes(p.age) && !state.ages.has(p.age)) return false;
     if (state.pos.size && !state.pos.has(estOf(p))) return false;
@@ -1329,14 +1351,15 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => appl
 function render() {
   savePrefs();
   updateSessionUI();
-  const rows = visibleRows();
+  const rows = visibleRows(state.showHidden);
+  const shown = rows.filter(p => !HIDDEN.has(p.pid));        // lo que cuenta en resúmenes y totales
   const maxBy = {};
   for (const pos of POSITIONS) maxBy[pos.key] = Math.max(0, ...rows.map(p => p.sc ? p.sc[pos.key] : 0));
   for (const c of COMPOSITES) maxBy[c.key] = Math.max(0, ...rows.map(p => compositeValue(p, c) ?? 0));
 
   $("#body").innerHTML = rows.length ? rows.map((p, rowIdx) => {
     const tds = COLS.map(c => {
-      if (c.key === "n") return `<td class="c-n">${rowIdx + 1}</td>`;
+      if (c.key === "n") { const hd = HIDDEN.has(p.pid); return `<td class="c-n"><span class="rn">${rowIdx + 1}</span><button type="button" class="rowhide" data-pid="${esc(p.pid)}" data-act="${hd ? "show" : "hide"}" title="${hd ? "Volver a mostrar esta fila" : "Ocultar esta fila"}" aria-label="${hd ? "Volver a mostrar" : "Ocultar"} la fila de ${esc(p.name || p.pid)}">${hd ? "↺" : "×"}</button></td>`; }
       if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
       if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "team") {
@@ -1373,7 +1396,7 @@ function render() {
       const t = cellText(p, c.key);
       return `<td class="${c.left ? "l" : ""}">${t === "" ? '<span class="dim">—</span>' : esc(t)}</td>`;
     }).join("");
-    return `<tr>${tds}</tr>`;
+    return `<tr${HIDDEN.has(p.pid) ? ' class="is-hidden"' : ""}>${tds}</tr>`;
   }).join("") : `<tr><td class="empty" colspan="${COLS.length}">Ningún jugador coincide con los filtros. Borra la búsqueda o amplía el rango de edad.</td></tr>`;
 
   if (rows.length) document.querySelectorAll("#body tr").forEach(tr => {
@@ -1382,7 +1405,8 @@ function render() {
     COLS.forEach((c, i) => { if (SEP[c.key] && tr.children[i]) tr.children[i].classList.add(...SEP[c.key].split(" ")); });
   });
 
-  updateSummary(rows);
+  updateSummary(shown);
+  updateHiddenUI();
   applyFreeze();
   if (state.countries) renderCountries();
 
@@ -1405,7 +1429,7 @@ function render() {
   const stamp = (when ? ` Datos al ${when}${when.endsWith(".") ? "" : "."}` : "")
     + (prevWhen ? ` Flechas ▲▼: cambios respecto al ${prevWhen.replace(/,.*$/, "")}.` : "");
   $("#lede").innerHTML = total
-    ? `<strong>${total} jugadores</strong> en la hoja, ${rows.length} visibles.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}<span id="syncMsg">${syncText() ? " " + esc(syncText()) : ""}</span>`
+    ? `<strong>${total} jugadores</strong> en la hoja, ${shown.length} visibles${HIDDEN.size ? `, ${HIDDEN.size} ocultas a mano` : ""}.${esc(stamp)}${esc(skillCount ? ` ${skillCount} con skills.` : "")}<span id="syncMsg">${syncText() ? " " + esc(syncText()) : ""}</span>`
     : "No hay jugadores para mostrar.";
 }
 
@@ -1654,7 +1678,16 @@ function init() {
   });
   $("#body").addEventListener("click", e => {
     const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
+    const h = e.target.closest(".rowhide");
+    if (h) {
+      if (h.dataset.act === "show") HIDDEN.delete(h.dataset.pid); else HIDDEN.add(h.dataset.pid);
+      saveHidden();
+      if (!HIDDEN.size) state.showHidden = false;
+      render();
+    }
   });
+  $("#showHidden").addEventListener("click", () => { state.showHidden = !state.showHidden; render(); });
+  $("#unhideAll").addEventListener("click", () => { HIDDEN.clear(); saveHidden(); state.showHidden = false; render(); });
   $("#showCountries").addEventListener("click", () => setCountries(!state.countries));
   $("#chead").addEventListener("click", e => {
     const th = e.target.closest("th[data-key]"); if (!th) return;
