@@ -128,3 +128,5 @@ Los cambios de la alineación (incluidas las posiciones en la cancha y el orden 
 ### Lista de jugadores desde la API
 
 `fetch-players.mjs` puede obtener los PID de `GET /national/{teamId}/pool`: define el id de la selección con la variable `SOKKER_NATIONAL_ID` (o en la constante `NATIONAL_TEAM_ID` del script) y, si el servicio lo exige, `SOKKER_USER` y `SOKKER_PASS`. Sin ese id, el script sigue leyendo la hoja de Google como antes. Con la API se pierden las skills y los nombres que venían en la hoja (las skills completas siguen saliendo de `/player/{pid}` cuando la API las entrega).
+
+**Sustituciones y números**: el número pertenece al espacio de la cancha, no al jugador. Si cambias al titular por otro jugador, el nuevo conserva el número y la sustitución programada sigue en ese espacio. El minuto de un suplente se actualiza en la cancha al confirmarlo (Enter o salir del campo).

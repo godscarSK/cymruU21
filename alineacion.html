@@ -438,7 +438,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, hideVal: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, showHidden: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -558,7 +558,7 @@ function sanitize(o, t) {
       L.p[k] = [Math.min(94, Math.max(6, Math.round(+v[0] * 10) / 10)), Math.min(96, Math.max(4, Math.round(+v[1] * 10) / 10))];
   }
   if (o.j && typeof o.j === "object") for (const [k, v] of Object.entries(o.j)) {        // números de camiseta editados a mano: j[pid] = 1..99
-    const x = Math.round(+v); if (/^\d+$/.test(k) && x >= 1 && x <= 99) L.j[k] = x;
+    const x = Math.round(+v); if (/^(\d+|(GK|DEF|MID|ATT)\d)$/.test(k) && x >= 1 && x <= 99) L.j[k] = x;
   }
   L.b = Array.isArray(o.b) ? [...new Set(o.b.map(String).filter(x => /^\d+$/.test(x)))] : [];
   if (o.s && typeof o.s === "object") for (const [k, v] of Object.entries(o.s)) {
@@ -612,20 +612,36 @@ function placedSet() {
 }
 function pruneSubs() {
   for (const k of Object.keys(lineup.s)) if (!lineup.b.includes(k)) delete lineup.s[k];
-  const pl = placedSet(); for (const k of Object.keys(lineup.j)) if (!pl.has(k)) delete lineup.j[k];
+  const c = counts(lineup.f);
+  for (const k of Object.keys(lineup.j)) { const m = /^(GK|DEF|MID|ATT)(\d)$/.exec(k); if (!m || +m[2] >= c[m[1]]) delete lineup.j[k]; }
 }
-// Número de cada titular: el editado a mano o, si no hay, el primer número libre del 1 al 99 en orden GK, DEF, MID, ATT (1 al 11 por defecto).
-function shirtNumbers() {
-  const c = counts(lineup.f), order = [], out = {};
-  for (const ln of ["GK", "DEF", "MID", "ATT"]) for (let i = 0; i < c[ln]; i++) { const p = lineup.l[ln][i]; if (p && isElig(p)) order.push(p); }
-  const used = new Set(order.filter(p => lineup.j[p]).map(p => lineup.j[p]));
+// El número pertenece al espacio de la cancha (clave «DEF0», «MID2»…), no al jugador que lo ocupa: el editado a mano o, si no hay,
+// el primer número libre del 1 al 99 en orden GK, DEF, MID, ATT (1 al 11 por defecto). Las sustituciones se refieren a este número.
+const slotKeys = f => { const c = counts(f), out = []; for (const ln of ["GK", "DEF", "MID", "ATT"]) for (let i = 0; i < c[ln]; i++) out.push(ln + i); return out; };
+function shirtNumbers(L = lineup) {
+  const keys = slotKeys(L.f), used = new Set(keys.filter(k => L.j[k]).map(k => L.j[k])), out = {};
   let n = 1;
-  for (const p of order) {
-    if (lineup.j[p]) { out[p] = lineup.j[p]; continue; }
+  for (const k of keys) {
+    if (L.j[k]) { out[k] = L.j[k]; continue; }
     while (used.has(n)) n++;
-    out[p] = n; used.add(n);
+    out[k] = n; used.add(n);
   }
   return out;
+}
+// Alineaciones guardadas antes de este cambio: los números iban por jugador y las sustituciones apuntaban al jugador. Se pasan al espacio.
+function migrateLegacy() {
+  const legacyJ = Object.keys(lineup.j).some(k => /^\d+$/.test(k)), legacyS = Object.values(lineup.s).some(v => v && v.o && v.o.length > 2);
+  if (!legacyJ && !legacyS) return;
+  const c = counts(lineup.f), order = [];
+  for (const ln of ["GK", "DEF", "MID", "ATT"]) for (let i = 0; i < c[ln]; i++) { const p = lineup.l[ln][i]; order.push({ key: ln + i, pid: p && isElig(p) ? p : "" }); }
+  const used = new Set(order.filter(x => x.pid && lineup.j[x.pid]).map(x => lineup.j[x.pid])), num = {};
+  let n = 1;
+  for (const x of order) { if (!x.pid) continue; if (lineup.j[x.pid]) { num[x.pid] = lineup.j[x.pid]; continue; } while (used.has(n)) n++; num[x.pid] = n; used.add(n); }
+  const nj = {};
+  for (const x of order) if (x.pid) nj[x.key] = num[x.pid];
+  for (const [k, v] of Object.entries(lineup.j)) if (!/^\d+$/.test(k)) nj[k] = v;
+  lineup.j = nj;
+  for (const v of Object.values(lineup.s)) if (v && v.o && v.o.length > 2) v.o = num[v.o] ? String(num[v.o]) : "";
 }
 function changed() {
   pruneSubs();
@@ -704,7 +720,25 @@ function chipHTML(p, sn, out) {
     (p.red ? `<span class="red" title="Tarjeta roja en la selección"></span>` : "") +
     (out || []).map(o => `<span class="outb" title="Sale por ${esc(o.name)}">↓${o.m ? " " + esc(o.m) : ""}</span>`).join("") + `</div>`;
 }
-function render() {
+let rendering = false;
+function render() {                  // conserva el foco (y el cursor) del campo que se está editando
+  if (rendering) return;             // al reemplazar el HTML, el campo enfocado dispara «blur»/«change»: no se redibuja dentro de un redibujado
+  rendering = true;
+  try { renderFocus(); } finally { rendering = false; }
+}
+function renderFocus() {
+  const a = document.activeElement; let sel = null, pos = null;
+  if (a && a.matches) {
+    if (a.matches(".mn input")) sel = `.mn input[data-pid="${a.dataset.pid}"]`;
+    else if (a.matches(".po select")) sel = `.po select[data-pid="${a.dataset.pid}"]`;
+    else if (a.matches("input.num")) sel = `input.num[data-key="${a.dataset.key}"]`;
+    if (sel && a.selectionStart != null) pos = [a.selectionStart, a.selectionEnd];
+  }
+  renderAll();
+  if (sel) { const n = document.querySelector(sel); if (n) { n.focus(); try { if (pos) n.setSelectionRange(pos[0], pos[1]); } catch {} } }
+}
+function renderAll() {
+  migrateLegacy();
   const sn = surnames(), placed = placedSet(), c = counts(lineup.f);
   // lista de jugadores disponibles
   const avail = players.filter(p => isElig(p.pid) && !placed.has(p.pid));
@@ -715,7 +749,7 @@ function render() {
   }
   $("#pool").innerHTML = html;
   // sustituciones: titular → quién lo reemplaza y en qué minuto
-  const outOf = {};      // pid del que sale → [{ name del que entra, minuto }]; un mismo jugador puede salir más de una vez (también un suplente que ya entró)
+  const outOf = {};      // número del que sale → [{ name del que entra, minuto }]; un mismo número puede salir más de una vez
   for (const pid of lineup.b) {
     const s = lineup.s[pid];
     if (s && s.o && isElig(pid)) (outOf[s.o] = outOf[s.o] || []).push({ name: byPid.get(pid).name, m: s.m });
@@ -729,16 +763,16 @@ function render() {
       const pid = lineup.l[ln][i], ok = pid && isElig(pid);
       if (ok) started++;
       const p = ok ? byPid.get(pid) : null;
-      if (ok) starters.push({ pid, ln });
+      if (ok) starters.push({ pid, ln, key: ln + i, num: shirt[ln + i] });
       const [x, y] = slotPos(ln, i, c[ln]), w = (100 / (c[ln] + 1) * 1.0).toFixed(1);
-      pitch += `<div class="slot${ok ? " has" : ""}${ok && markOf(pid) !== ln ? " mismatch" : ""}" data-line="${ln}" data-i="${i}" style="left:${x}%;top:${y}%;--w:${w}%">${p ? `<input class="num" type="text" inputmode="numeric" maxlength="2" value="${shirt[pid]}" data-pid="${pid}" aria-label="Número de ${esc(sn.get(pid))}">` + chipHTML(p, sn, outOf[pid]) : ln}</div>`;
+      pitch += `<div class="slot${ok ? " has" : ""}${ok && markOf(pid) !== ln ? " mismatch" : ""}" data-line="${ln}" data-i="${i}" style="left:${x}%;top:${y}%;--w:${w}%">${p ? `<input class="num" type="text" inputmode="numeric" maxlength="2" value="${shirt[ln + i]}" data-key="${ln}${i}" aria-label="Número de ${esc(sn.get(pid))}">` + chipHTML(p, sn, outOf[String(shirt[ln + i])]) : ln}</div>`;
     }
   }
   $("#pitch").innerHTML = pitch;
   const visB = lineup.b.filter(isElig);
   const subRow = (pid, bi, n) => {
     const s = lineup.s[pid] || { m: "", o: "" };
-    const opts = `<option value="">—</option>` + [...starters].sort((a, b) => shirt[a.pid] - shirt[b.pid]).map(x => `<option value="${x.pid}"${x.pid === s.o ? " selected" : ""}>${shirt[x.pid]}</option>`).join("");
+    const opts = `<option value="">—</option>` + [...starters].sort((a, b) => a.num - b.num).map(x => `<option value="${x.num}"${String(x.num) === s.o ? " selected" : ""}>${x.num}</option>`).join("");
     return `<div class="sub" data-pid="${pid}"><span class="mv"><button type="button" data-mv="-1" data-pid="${pid}" aria-label="Subir en la lista"${bi === 0 ? " disabled" : ""}>↑</button><button type="button" data-mv="1" data-pid="${pid}" aria-label="Bajar en la lista"${bi === n - 1 ? " disabled" : ""}>↓</button></span>${chipHTML(byPid.get(pid), sn, outOf[pid])}<label class="mn">Entra al min <input type="text" inputmode="numeric" maxlength="8" size="4" placeholder="—" data-pid="${pid}" value="${esc(s.m)}"></label>` +
       `<label class="po">por <select data-pid="${pid}">${opts}</select></label></div>`;
   };
@@ -1060,9 +1094,10 @@ async function init() {
   };
   $("#bench").addEventListener("input", e => {
     const i = e.target.closest(".mn input"); if (!i) return;
-    setSub(i.dataset.pid, "m", i.value.trim().slice(0, 8));
-    clearTimeout(subTimer); subTimer = setTimeout(render, 900);       // refleja el minuto en la cancha cuando dejas de escribir
+    setSub(i.dataset.pid, "m", i.value.trim().slice(0, 8));         // se guarda al escribir, pero la cancha se actualiza al confirmar (Enter o salir del campo)
   });
+  $("#bench").addEventListener("change", e => { if (e.target.closest(".mn input")) render(); });
+  $("#bench").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches(".mn input")) e.target.blur(); });
   $("#bench").addEventListener("click", e => {
     const b = e.target.closest("button[data-mv]"); if (!b || b.disabled) return;
     moveSub(b.dataset.pid, +b.dataset.mv);
@@ -1089,25 +1124,25 @@ async function init() {
   // Número de camiseta: si ya lo tiene otro titular, se intercambian. Se calcula siempre desde el estado al enfocar el campo, así cada tecla es idempotente.
   let numSnap = null;
   const snap = () => { if (!numSnap) numSnap = { j: { ...lineup.j }, nums: shirtNumbers() }; };
-  const applyNum = (pid, text) => {
+  const applyNum = (key, text) => {
     snap();
     const t = text.trim(), v = Math.round(+t), ok = /^\d{1,2}$/.test(t) && v >= 1;
     lineup.j = { ...numSnap.j, ...numSnap.nums };               // al editar uno, los demás conservan el número que se ve (no se corren)
-    if (!ok) { delete lineup.j[pid]; return; }       // vacío o inválido: vuelve al número por defecto
-    const prev = numSnap.nums[pid], other = Object.keys(numSnap.nums).find(q => q !== pid && numSnap.nums[q] === v);
-    lineup.j[pid] = v;
+    if (!ok) { delete lineup.j[key]; return; }       // vacío o inválido: vuelve al número por defecto
+    const prev = numSnap.nums[key], other = Object.keys(numSnap.nums).find(q => q !== key && numSnap.nums[q] === v);
+    lineup.j[key] = v;
     if (other && prev) lineup.j[other] = prev;
   };
   $("#pitch").addEventListener("focusin", e => { if (e.target.matches && e.target.matches("input.num")) { numSnap = null; snap(); } });
   $("#pitch").addEventListener("input", e => {                      // se registra mientras se escribe (sin redibujar) para que «Guardar» lo incluya aunque el teclado siga abierto
     const i = e.target.closest("input.num"); if (!i || !lineup.l) return;
     if (!/^\d{1,2}$/.test(i.value.trim())) return;
-    applyNum(i.dataset.pid, i.value);
+    applyNum(i.dataset.key, i.value);
     lineup.t = Date.now(); lineup.dirty = true; saveLocal(); schedulePush();
   });
   $("#pitch").addEventListener("change", e => {
     const i = e.target.closest("input.num"); if (!i) return;
-    applyNum(i.dataset.pid, i.value); numSnap = null;
+    applyNum(i.dataset.key, i.value); numSnap = null;
     changed();
   });
   $("#pitch").addEventListener("keydown", e => { if (e.target.matches("input.num") && e.key === "Enter") e.target.blur(); });
