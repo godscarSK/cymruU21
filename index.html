@@ -373,6 +373,7 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
       <button class="btn" id="hideVal" type="button" aria-pressed="false" title="Ocultar o mostrar la columna Valor">Ocultar Valor</button>
       <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Clubes</button>
       <button class="btn" id="showCountries" type="button" aria-pressed="false" title="Ver cuántos equipos hay de cada país">Países</button>
+      <button class="btn" id="showTeams" type="button" aria-pressed="false" title="Ver cuántos jugadores hay de cada equipo">Equipos</button>
       <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
       <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
@@ -725,7 +726,7 @@ async function checkOwners(ids, fetchOwner, shouldStop) {
 }
 const AGES = [16, 17, 18, 19, 20, 21];
 const state = {
-  players: [], pos: new Set(), showTeam: false, hideVal: false, showHidden: false, countries: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
+  players: [], pos: new Set(), showTeam: false, hideVal: false, showHidden: false, countries: false, teams: false, onlyBot: false, onlyInjured: false, onlySusp: false, onlyU21: false, onlyChanges: false, q: "", ages: new Set(AGES), skills: "all", withForm: false,
   sort: { key: "n", dir: 1 }, stamp: null, source: "",
   session: null            // { user } mientras haya sesión iniciada; la contraseña nunca se guarda
 };
@@ -1408,7 +1409,7 @@ function render() {
   updateSummary(shown);
   updateHiddenUI();
   applyFreeze();
-  if (state.countries) renderCountries();
+  if (state.countries) renderCountries(); else if (state.teams) renderTeams();
 
   // Al ordenar por DEF, DEFside, MID, ATT o ATTside se resaltan las skills que entran en esa suma; Suma solo se resalta a sí misma.
   const act = compOf(state.sort.key);
@@ -1447,7 +1448,7 @@ function countryRows() {
     const e = byC.get(c); e.teams.add(String(p.teamId)); e.j++;
   }
   const list = [...byC].map(([name, e]) => ({ name, f: e.teams.size, j: e.j, pct: vis.length ? e.j / vis.length * 100 : 0 }));
-  list.sort((a, b) => b.f - a.f || a.name.localeCompare(b.name, "es"));   // orden base: más frecuentes primero
+  list.sort((a, b) => b.pct - a.pct || b.f - a.f || a.name.localeCompare(b.name, "es"));   // orden base: % de jugadores, luego equipos, luego alfabético
   const { key, dir } = cstate.sort;
   if (key === "name") list.sort((a, b) => dir * a.name.localeCompare(b.name, "es"));
   else if (key === "f" || key === "j" || key === "pct") list.sort((a, b) => dir * (a[key] - b[key]) || a.name.localeCompare(b.name, "es"));
@@ -1464,13 +1465,47 @@ function renderCountries() {
     ? list.map((r, i) => `<tr><td>${i + 1}</td><td class="l">${esc(r.name)}</td><td>${r.f}</td><td>${r.j}</td><td>${pctText(r.pct)}</td></tr>`).join("")
     : `<tr><td class="empty" colspan="5">No hay países para mostrar. Los países se cargan con fetch-players.mjs y dependen de los filtros activos.</td></tr>`;
 }
-function setCountries(on) {
-  state.countries = on;
-  document.body.classList.toggle("view-countries", on);
-  $("#cwrap").hidden = !on;
-  $("#showCountries").setAttribute("aria-pressed", String(on));
-  if (on) renderCountries();
+// ── Vista «Equipos»: estadísticas por equipo entre los jugadores visibles ──
+const TT_COLS = [{ key: "n", label: "#" }, { key: "name", label: "Equipo", left: true }, { key: "country", label: "País", left: true }, { key: "j", label: "Jugadores" }, { key: "pct", label: "Jugadores %" }];
+const tstate = { sort: { key: "n", dir: 1 } };
+function teamRows() {
+  const byT = new Map(), vis = visibleRows();
+  for (const p of vis) {
+    if (p.teamId == null) continue;
+    const id = String(p.teamId);
+    if (!byT.has(id)) byT.set(id, { id, name: p.team || `Equipo ${id}`, country: TEAM_COUNTRY.get(id) || "", bot: false, j: 0 });
+    const e = byT.get(id); e.j++; if (isBot(p)) e.bot = true; if (p.team) e.name = p.team;
+  }
+  const cmp = (a, b) => a.name.localeCompare(b.name, "es");
+  const list = [...byT.values()].map(e => ({ ...e, pct: vis.length ? e.j / vis.length * 100 : 0 }));
+  list.sort((a, b) => b.pct - a.pct || cmp(a, b));                  // orden base: % de jugadores y luego alfabético
+  const { key, dir } = tstate.sort;
+  if (key === "name") list.sort((a, b) => dir * cmp(a, b));
+  else if (key === "country") list.sort((a, b) => dir * a.country.localeCompare(b.country, "es") || cmp(a, b));
+  else if (key === "j" || key === "pct") list.sort((a, b) => dir * (a[key] - b[key]) || cmp(a, b));
+  else if (dir === -1) list.reverse();
+  return list;
 }
+function renderTeams() {
+  $("#chead").innerHTML = TT_COLS.map(c => {
+    const on = tstate.sort.key === c.key;
+    return `<th class="${c.left ? "l" : ""}" data-key="${c.key}" scope="col" aria-sort="${on ? (tstate.sort.dir === 1 ? "ascending" : "descending") : "none"}"><button type="button">${c.label}</button></th>`;
+  }).join("");
+  const list = teamRows();
+  $("#cbody").innerHTML = list.length
+    ? list.map((r, i) => `<tr><td>${i + 1}</td><td class="l"><a class="tlink" href="https://sokker.org/en/app/team/${encodeURIComponent(r.id)}/" target="_blank" rel="noopener">${esc(r.name)}</a>${r.bot ? ' <span class="bot" title="Equipo sin dueño">BOT</span>' : ""}</td><td class="l">${esc(r.country)}</td><td>${r.j}</td><td>${pctText(r.pct)}</td></tr>`).join("")
+    : `<tr><td class="empty" colspan="5">No hay equipos para mostrar. Los equipos se cargan con fetch-players.mjs y dependen de los filtros activos.</td></tr>`;
+}
+// Vistas de tabla resumen: «countries», «teams» o ninguna (tabla principal). Son excluyentes.
+function setView(mode) {
+  state.countries = mode === "countries"; state.teams = mode === "teams";
+  document.body.classList.toggle("view-countries", !!mode);
+  $("#cwrap").hidden = !mode;
+  $("#showCountries").setAttribute("aria-pressed", String(state.countries));
+  $("#showTeams").setAttribute("aria-pressed", String(state.teams));
+  if (mode === "countries") renderCountries(); else if (mode === "teams") renderTeams();
+}
+const setCountries = on => setView(on ? "countries" : null);
 function setHideVal(on) {
   state.hideVal = on;
   document.querySelector("#tbl").classList.toggle("no-val", on);
@@ -1553,13 +1588,14 @@ async function copyPid(pid) {
 
 function pctText(v) { return v.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %"; }
 async function copyTable() {
-  const countries = state.countries;
-  const rows = countries ? countryRows() : visibleRows();
-  const cols = countries ? CT_COLS : COLS.filter(c => c.key !== "team" || state.showTeam).flatMap(c => c.key === "name" ? [c, { key: "pid", label: "PID" }] : [c]);
+  const countries = state.countries, teams = state.teams;
+  const rows = countries ? countryRows() : teams ? teamRows() : visibleRows();
+  const cols = countries ? CT_COLS : teams ? TT_COLS : COLS.filter(c => c.key !== "team" || state.showTeam).flatMap(c => c.key === "name" ? [c, { key: "pid", label: "PID" }] : [c]);
   const head = cols.map(c => c.long || (c.label === "#" ? "N" : c.label));
   const lines = [head.join("\t")];
   for (const p of rows) {
     if (countries) { lines.push([rows.indexOf(p) + 1, p.name, p.f, p.j, pctText(p.pct)].join("\t")); continue; }
+    if (teams) { lines.push([rows.indexOf(p) + 1, p.name, p.country, p.j, pctText(p.pct)].join("\t")); continue; }
     lines.push(cols.map(c => {
       if (c.key === "n") return rows.indexOf(p) + 1;
       if (c.key === "name") return p.name || p.pid;
@@ -1578,7 +1614,7 @@ async function copyTable() {
     ta.remove();
   }
   const old = btn.textContent;
-  btn.textContent = countries ? `Copiados ${rows.length} países` : `Copiadas ${rows.length} filas`;
+  btn.textContent = countries ? `Copiados ${rows.length} países` : teams ? `Copiados ${rows.length} equipos` : `Copiadas ${rows.length} filas`;
   setTimeout(() => { btn.textContent = old; }, 1800);
 }
 
@@ -1689,11 +1725,13 @@ function init() {
   $("#showHidden").addEventListener("click", () => { state.showHidden = !state.showHidden; render(); });
   $("#unhideAll").addEventListener("click", () => { HIDDEN.clear(); saveHidden(); state.showHidden = false; render(); });
   $("#showCountries").addEventListener("click", () => setCountries(!state.countries));
+  $("#showTeams").addEventListener("click", () => setView(state.teams ? null : "teams"));
   $("#chead").addEventListener("click", e => {
     const th = e.target.closest("th[data-key]"); if (!th) return;
     const k = th.dataset.key;
-    cstate.sort = k === "n" ? { key: "n", dir: 1 } : { key: k, dir: cstate.sort.key === k ? -cstate.sort.dir : (k === "f" || k === "j" || k === "pct" ? -1 : 1) };
-    renderCountries();
+    const S = state.teams ? tstate : cstate;
+    S.sort = k === "n" ? { key: "n", dir: 1 } : { key: k, dir: S.sort.key === k ? -S.sort.dir : (k === "f" || k === "j" || k === "pct" ? -1 : 1) };
+    if (state.teams) renderTeams(); else renderCountries();
   });
   $("#sumExport").addEventListener("click", copySummary);
   $("#hideVal").addEventListener("click", () => { setHideVal(!state.hideVal); render(); });
