@@ -132,3 +132,5 @@ Los cambios de la alineación (incluidas las posiciones en la cancha y el orden 
 **Sustituciones y números**: el número pertenece al espacio de la cancha, no al jugador. Si cambias al titular por otro jugador, el nuevo conserva el número y la sustitución programada sigue en ese espacio. El minuto de un suplente se actualiza en la cancha al confirmarlo (Enter o salir del campo).
 
 La tabla de **Países** se ordena por defecto por «Jugadores %», luego por «Equipos» y luego alfabéticamente. El botón **Equipos** muestra la misma clase de tabla por equipo (Equipo, País, Jugadores, Jugadores %), con enlace al equipo en Sokker; respeta los filtros y se exporta con CSV.
+
+**Copiar un jugador**: el botón junto al nombre abre un menú con «Datos para el foro» (formato BBCode con PID, edad, altura, valor, sueldo, club, país y skills con su nivel), «Fila en CSV» y «Solo el PID».

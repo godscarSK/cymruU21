@@ -217,6 +217,9 @@ td.c-name .copypid {
 }
 td.c-name .copypid:hover { color: var(--ink); border-color: var(--ink); }
 td.c-name .copypid:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+.copymenu { position: fixed; z-index: 50; display: flex; flex-direction: column; min-width: 11rem; padding: 4px; background: var(--panel); border: 1px solid var(--ink); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.copymenu button { font: inherit; text-align: left; padding: 8px 10px; min-height: 38px; border: 0; border-radius: 4px; background: transparent; color: var(--ink); cursor: pointer; }
+.copymenu button:hover, .copymenu button:focus-visible { background: var(--ink); color: var(--panel); outline: none; }
 td.c-name .copypid svg { width: 14px; height: 14px; }
 #toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 50;
@@ -681,7 +684,7 @@ function normalize(row, api) {
   const p = {
     n: row.n, name: row.name, pid: row.pid,
     link: "https://sokker.org/player/PID/" + row.pid,
-    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, callUp: false, red: 0, value: null, currency: "",
+    loaded: false, failed: false, age: null, team: "", teamId: null, teamBot: null, callUp: false, red: 0, value: null, currency: "", height: null, wage: null, wageCur: "",
     form: null, disc: null, teamwork: null, exp: null, injury: 0, nt: "", skills: null
   };
   const i = api && api.info;
@@ -696,6 +699,10 @@ function normalize(row, api) {
     for (const k of ["bot", "isBot"]) if (typeof i.team?.[k] === "boolean") p.teamBot = i.team[k];
     p.value = num(i.value?.value);
     p.currency = i.value?.currency || "";
+    p.height = num(i.characteristics?.height ?? i.height);
+    const w = i.wage ?? i.salary ?? i.characteristics?.wage;
+    p.wage = num(w?.value ?? (typeof w === "object" ? null : w));
+    p.wageCur = w?.currency || p.currency;
     const s = i.skills || {};
     p.form = num(s.form); p.disc = num(s.tacticalDiscipline); p.teamwork = num(s.teamwork); p.exp = num(s.experience);
     p.injury = num(i.injury?.daysRemaining) > 0 ? i.injury.daysRemaining : 0;
@@ -1362,7 +1369,7 @@ function render() {
     const tds = COLS.map(c => {
       if (c.key === "n") { const hd = HIDDEN.has(p.pid); return `<td class="c-n"><span class="rn">${rowIdx + 1}</span><button type="button" class="rowhide" data-pid="${esc(p.pid)}" data-act="${hd ? "show" : "hide"}" title="${hd ? "Volver a mostrar esta fila" : "Ocultar esta fila"}" aria-label="${hd ? "Volver a mostrar" : "Ocultar"} la fila de ${esc(p.name || p.pid)}">${hd ? "↺" : "×"}</button></td>`; }
       if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar PID ${esc(p.pid)}" aria-label="Copiar PID ${esc(p.pid)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar: datos para el foro, fila CSV o PID" aria-label="Copiar datos de ${esc(p.name || p.pid)}" aria-haspopup="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "team") {
         if (!p.team) return `<td class="l dim">${p.loaded || p.failed ? "—" : "…"}</td>`;
         const ct = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
@@ -1574,16 +1581,70 @@ async function copySummary() {
   }
   toast("Resumen copiado");
 }
-async function copyPid(pid) {
-  try { await navigator.clipboard.writeText(pid); }
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
   catch {
     const ta = document.createElement("textarea");
-    ta.value = pid; ta.style.position = "fixed"; ta.style.opacity = "0";
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta); ta.select();
     try { document.execCommand("copy"); } catch {}
     ta.remove();
   }
-  toast("PID copiado");
+}
+// Niveles de skill de Sokker (0 al 18) con el nombre que usa el foro.
+const SKILL_NAMES = ["tragic", "hopeless", "unsatisfactory", "poor", "weak", "average", "adequate", "good", "solid", "very good", "excellent", "formidable", "outstanding", "incredible", "brilliant", "magical", "unearthly", "divine", "superdivine"];
+const spaced = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+function forumText(p) {
+  const money = (v, cur) => `[b]${spaced(v)}${cur ? " " + cur : ""}[/b]`;
+  const skill = (label, v) => Number.isFinite(v) ? `${label} [b][${v}][/b] [b]${SKILL_NAMES[Math.min(v, SKILL_NAMES.length - 1)] ?? v}[/b]` : "";
+  const join = (...a) => a.filter(Boolean).join(", ");
+  const sk = p.skills || {};
+  const country = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
+  const lines = [
+    join(`[b][pid=${p.pid}]${p.name || p.pid}[/pid][/b]`, p.age != null ? `age: [b]${p.age}[/b]` : "", p.height != null ? `height [b]${p.height}[/b] cm` : ""),
+    join(p.value != null ? `value: ${money(p.value, p.currency)}` : "", p.wage != null ? `wage: ${money(p.wage, p.wageCur)}` : ""),
+    p.teamId != null ? join(`Club: [tid=${p.teamId}]${p.team}[/tid]`, country ? `country: ${country}` : "") : "",
+    join(skill("form", p.form), skill("Tactical Discipline", p.disc)),
+    "",
+    join(skill("stamina", sk.stamina), skill("keeper", sk.keeper)),
+    join(skill("pace", sk.pace), skill("defender", sk.defender)),
+    join(skill("technique", sk.technique), skill("playmaker", sk.playmaker)),
+    join(skill("passing", sk.passing), skill("striker", sk.striker)),
+  ];
+  return lines.filter((l, i) => l || i === 4).join("\n");
+}
+const csvCell = v => { v = String(v ?? "").replace(/\r?\n/g, " "); return /[",;]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+function rowCsv(p) {
+  const cols = COLS.filter(c => c.key !== "team" || state.showTeam).flatMap(c => c.key === "name" ? [c, { key: "pid", label: "PID" }] : [c]);
+  const rows = visibleRows(state.showHidden);
+  return cols.map(c => {
+    if (c.key === "n") return rows.indexOf(p) + 1;
+    if (c.key === "name") return csvCell(p.name || p.pid);
+    if (c.key === "pid") return p.pid;
+    return csvCell(cellText(p, c.key));
+  }).join(",");
+}
+// Menú de copia de un jugador: datos para el foro, fila CSV o solo el PID.
+let copyMenuEl = null;
+function closeCopyMenu() { if (copyMenuEl) { copyMenuEl.remove(); copyMenuEl = null; } }
+function openCopyMenu(btn) {
+  const same = copyMenuEl && copyMenuEl.dataset.pid === btn.dataset.pid;
+  closeCopyMenu(); if (same) return;
+  const m = document.createElement("div");
+  m.className = "copymenu"; m.setAttribute("role", "menu"); m.dataset.pid = btn.dataset.pid;
+  m.innerHTML = `<button type="button" role="menuitem" data-mode="forum">Datos para el foro</button><button type="button" role="menuitem" data-mode="csv">Fila en CSV</button><button type="button" role="menuitem" data-mode="pid">Solo el PID</button>`;
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect(), w = m.offsetWidth;
+  m.style.top = Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8) + "px";
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  copyMenuEl = m;
+  m.querySelector("button").focus();
+}
+async function copyPlayer(pid, mode) {
+  const p = state.players.find(x => x.pid === pid); if (!p) return;
+  if (mode === "pid") { await copyText(p.pid); toast("PID copiado"); }
+  else if (mode === "csv") { await copyText(rowCsv(p)); toast("Fila copiada en CSV"); }
+  else { await copyText(forumText(p)); toast("Datos para el foro copiados"); }
 }
 
 function pctText(v) { return v.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %"; }
@@ -1713,7 +1774,6 @@ function init() {
     if (state.sort.key === "est" || state.pos.size) render();
   });
   $("#body").addEventListener("click", e => {
-    const b = e.target.closest(".copypid"); if (b) copyPid(b.dataset.pid);
     const h = e.target.closest(".rowhide");
     if (h) {
       if (h.dataset.act === "show") HIDDEN.delete(h.dataset.pid); else HIDDEN.add(h.dataset.pid);
@@ -1725,6 +1785,13 @@ function init() {
   $("#showHidden").addEventListener("click", () => { state.showHidden = !state.showHidden; render(); });
   $("#unhideAll").addEventListener("click", () => { HIDDEN.clear(); saveHidden(); state.showHidden = false; render(); });
   $("#showCountries").addEventListener("click", () => setCountries(!state.countries));
+  document.addEventListener("click", e => {                     // menú de copia: abrir, elegir o cerrar
+    const btn = e.target.closest(".copypid"), it = e.target.closest(".copymenu button");
+    if (it) { const pid = it.parentElement.dataset.pid; closeCopyMenu(); copyPlayer(pid, it.dataset.mode); }
+    else if (btn) openCopyMenu(btn);
+    else closeCopyMenu();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeCopyMenu(); });
   $("#showTeams").addEventListener("click", () => setView(state.teams ? null : "teams"));
   $("#chead").addEventListener("click", e => {
     const th = e.target.closest("th[data-key]"); if (!th) return;
