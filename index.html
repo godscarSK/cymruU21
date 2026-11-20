@@ -102,6 +102,16 @@ h1 .mark { color: var(--accent); }
 }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; justify-content: flex-end; align-items: center; }
 .actions .btn { min-width: 3.6rem; text-align: center; }
+.grp { --gc: var(--ink); display: flex; flex-direction: column; gap: 3px; padding: 4px 8px 6px; border: 1px solid var(--line, #d0d0d0); border-top: 3px solid var(--gc); border-radius: 6px; }
+.grp[hidden], .grp:not(:has(.btn:not([hidden]))) { display: none; }
+.glabel { font-size: .62rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gc); }
+.gbtns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.g-ses { --gc: #6b6b6b; } .g-view { --gc: #2a6fb8; } .g-fil { --gc: #1b7a3a; } .g-row { --gc: #c77a00; } .g-exp { --gc: var(--accent); }
+.grp .btn { border-color: var(--gc); }
+.grp button.btn[aria-pressed="true"] { background: var(--gc); border-color: var(--gc); color: #fff; }
+.grp button.btn.primary { color: var(--accent-ink); }
+#onlyNew { font-weight: 700; }
+#onlyNew:disabled { opacity: .45; cursor: not-allowed; }
 .field { display: flex; flex-direction: column; gap: 3px; font-size: 0.875rem; color: var(--muted); }
 .field input[type="search"], .field input[type="number"], .field select {
   font: inherit; color: var(--ink); background: var(--panel);
@@ -204,6 +214,7 @@ select.est[data-v="ATT"] { background: #d6dcec; border-color: #1f2d5c; font-weig
   :root:not([data-theme="light"]) select.est[data-v="ATT"] { background: #1b2447; border-color: #6f84d1; }
 }
 td.c-name .bot { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: #f5c400; color: #2b2300; text-transform: uppercase; letter-spacing: .03em; }
+td.c-name .new { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: #1b8f3f; color: #fff; text-transform: lowercase; letter-spacing: .03em; }
 td.c-name .u21 { margin-left: 8px; padding: 1px 5px; border-radius: 3px; font-size: .62rem; font-weight: 700; background: var(--call); color: var(--call-ink); letter-spacing: .03em; }
 td.c-name .inj { margin-left: 8px; display: inline-flex; align-items: center; gap: 3px; font-size: .68rem; font-weight: 700; color: var(--inj); white-space: nowrap; vertical-align: middle; }
 td.c-name .inj svg { width: 13px; height: 13px; fill: var(--inj); }
@@ -368,24 +379,35 @@ dialog.dlg .actions { display: flex; justify-content: flex-end; gap: 10px; }
     </div>
     <label class="check" id="formToggle"><input type="checkbox" id="withForm"> Con forma</label>
     <div class="actions" role="group" aria-label="Acciones y filtros">
+      <div class="grp g-ses" role="group" aria-label="Sesión"><span class="glabel">Sesión</span><div class="gbtns">
       <span class="who" id="who" hidden></span>
       <a class="btn" href="alineacion.html" title="Armar la alineación del próximo partido">ALINEACIÓN →</a>
       <button class="btn" id="login" type="button">Conectar a Sokker</button>
       <button class="btn" id="logout" type="button" hidden>Cerrar sesión</button>
       <button class="btn" id="forgetPw" type="button" hidden title="Olvidar la contraseña en este navegador">Bloquear</button>
+      </div></div>
+      <div class="grp g-view" role="group" aria-label="Vista"><span class="glabel">Vista</span><div class="gbtns">
       <button class="btn" id="hideVal" type="button" aria-pressed="false" title="Ocultar o mostrar la columna Valor">Ocultar Valor</button>
       <button class="btn" id="showClubs" type="button" aria-pressed="false" title="Mostrar u ocultar la columna del club">Clubes</button>
       <button class="btn" id="showCountries" type="button" aria-pressed="false" title="Ver cuántos equipos hay de cada país">Países</button>
       <button class="btn" id="showTeams" type="button" aria-pressed="false" title="Ver cuántos jugadores hay de cada equipo">Equipos</button>
-      <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
+      </div></div>
+      <div class="grp g-fil" role="group" aria-label="Filtros"><span class="glabel">Filtros</span><div class="gbtns">
+      <button class="btn" id="onlyNew" type="button" aria-pressed="false" title="Mostrar solo los jugadores que no estaban en la actualización anterior (marca nuevo)">Nuevos</button>
+      <button class="btn" id="onlyChanges" type="button" aria-pressed="false" title="Mostrar solo los jugadores con cambios en sus skills respecto a la semana anterior (subidas o bajadas)">Cambios</button>
+      <button class="btn" id="onlyU21" type="button" aria-pressed="false" title="Mostrar solo los jugadores citados a la selección (marca U21)">U21</button>
       <button class="btn" id="onlyInjured" type="button" aria-pressed="false" title="Mostrar solo los jugadores lesionados">Lesionados</button>
       <button class="btn" id="onlySusp" type="button" aria-pressed="false" title="Mostrar solo los jugadores con tarjeta roja en la selección">Suspendidos</button>
-      <button class="btn" id="onlyU21" type="button" aria-pressed="false" title="Mostrar solo los jugadores citados a la selección (marca U21)">U21</button>
+      <button class="btn" id="onlyBot" type="button" aria-pressed="false" title="Mostrar solo los jugadores de equipos sin dueño">BOT</button>
+      <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
+      </div></div>
+      <div class="grp g-row" role="group" aria-label="Filas"><span class="glabel">Filas</span><div class="gbtns">
       <button class="btn" id="showHidden" type="button" aria-pressed="false" hidden title="Ver las filas ocultas a mano (atenuadas) para volver a mostrarlas una por una">Filas ocultas (0)</button>
       <button class="btn" id="unhideAll" type="button" hidden title="Volver a mostrar todas las filas ocultas a mano">Mostrar filas</button>
-      <button class="btn" id="onlyChanges" type="button" aria-pressed="false" title="Mostrar solo los jugadores con cambios en sus skills respecto a la semana anterior (subidas o bajadas)">Cambios</button>
-      <button class="btn" id="onlyHidden" type="button" aria-pressed="false" title="Mostrar solo los jugadores cuyas skills no se pueden ver">Ocultos</button>
+      </div></div>
+      <div class="grp g-exp" role="group" aria-label="Exportar"><span class="glabel">Exportar</span><div class="gbtns">
       <button class="btn primary" id="copy" type="button" title="Copiar la tabla visible para pegarla en una planilla">CSV</button>
+      </div></div>
     </div>
   </section>
 
@@ -890,6 +912,7 @@ async function load(force) {
       state.prevStamp = pv.generatedAt ? Date.parse(pv.generatedAt) : null;
       for (const p of state.players) {
         const a = pv.api[p.pid];
+        p.isNew = !a;
         p.prev = a ? normalize({ n: p.n, name: p.name, pid: p.pid, skills: {} }, a).skills : null;
       }
     }
@@ -1185,6 +1208,7 @@ function visibleRows(withHidden = false) {
     if (state.onlyBot && !isBot(p)) return false;
     if (state.onlyInjured && !p.injury) return false;
     if (state.onlySusp && !p.red) return false;
+    if (state.onlyNew && !p.isNew) return false;
     if (state.onlyU21 && !p.callUp) return false;
     if (state.onlyChanges && !hasChange(p)) return false;
     const hs = hasSkills(p.skills);
@@ -1304,7 +1328,7 @@ function savePrefs() {
   if (!prefsReady) return;
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify({
-      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp, onlyU21: state.onlyU21, onlyChanges: state.onlyChanges,
+      ages: [...state.ages], pos: [...state.pos], onlyBot: state.onlyBot, onlyInjured: state.onlyInjured, onlySusp: state.onlySusp, onlyU21: state.onlyU21, onlyNew: state.onlyNew, onlyChanges: state.onlyChanges,
       hidden: state.skills === "hidden", clubs: state.showTeam, hideVal: state.hideVal, sort: state.sort
     }));
   } catch {}
@@ -1320,6 +1344,7 @@ function loadPrefs() {
   state.onlyInjured = p.onlyInjured === true;
   state.onlySusp = p.onlySusp === true;
   state.onlyU21 = p.onlyU21 === true;
+  state.onlyNew = p.onlyNew === true;
   state.onlyChanges = p.onlyChanges === true;
   state.skills = p.hidden === true ? "hidden" : "all";
   if (p.sort && COLS.some(c => c.key === p.sort.key) && (p.sort.dir === 1 || p.sort.dir === -1)) state.sort = { key: p.sort.key, dir: p.sort.dir };
@@ -1328,7 +1353,7 @@ function loadPrefs() {
   // Sincroniza el aspecto de los botones con lo recuperado.
   const press = (id, on) => $(id).setAttribute("aria-pressed", String(on));
   press("#onlyBot", state.onlyBot); press("#onlyInjured", state.onlyInjured);
-  press("#onlySusp", state.onlySusp); press("#onlyU21", state.onlyU21); press("#onlyChanges", state.onlyChanges); press("#onlyHidden", state.skills === "hidden");
+  press("#onlySusp", state.onlySusp); press("#onlyU21", state.onlyU21); press("#onlyNew", state.onlyNew); press("#onlyChanges", state.onlyChanges); press("#onlyHidden", state.skills === "hidden");
   document.querySelectorAll("#poss button[data-pos]").forEach(b => b.setAttribute("aria-pressed", String(state.pos.has(b.dataset.pos))));
   document.querySelectorAll("#ages button[data-age]").forEach(b => b.setAttribute("aria-pressed", String(state.ages.has(Number(b.dataset.age)))));
 }
@@ -1369,7 +1394,7 @@ function render() {
     const tds = COLS.map(c => {
       if (c.key === "n") { const hd = HIDDEN.has(p.pid); return `<td class="c-n"><span class="rn">${rowIdx + 1}</span><button type="button" class="rowhide" data-pid="${esc(p.pid)}" data-act="${hd ? "show" : "hide"}" title="${hd ? "Volver a mostrar esta fila" : "Ocultar esta fila"}" aria-label="${hd ? "Volver a mostrar" : "Ocultar"} la fila de ${esc(p.name || p.pid)}">${hd ? "↺" : "×"}</button></td>`; }
       if (c.key === "est") { const v = estOf(p); return `<td class="c-est"><select class="est" data-pid="${esc(p.pid)}" data-v="${v}" aria-label="Asignación de ${esc(p.name || p.pid)}"><option value=""${v ? "" : " selected"}>—</option>${EST_OPTS.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select></td>`; }
-      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar: datos para el foro, fila CSV o PID" aria-label="Copiar datos de ${esc(p.name || p.pid)}" aria-haspopup="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
+      if (c.key === "name") return `<td class="l c-name"><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name || p.pid)}</a><button type="button" class="copypid" data-pid="${esc(p.pid)}" title="Copiar: datos para el foro, fila CSV o PID" aria-label="Copiar datos de ${esc(p.name || p.pid)}" aria-haspopup="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>${p.isNew ? `<span class="new" title="No estaba en la actualización anterior">nuevo</span>` : ""}${p.callUp ? `<span class="u21" title="Citado a la selección">U21</span>` : ""}${p.injury ? `<span class="inj" title="Lesionado: ${p.injury} ${p.injury === 1 ? "día" : "días"}" aria-label="Lesionado, ${p.injury} ${p.injury === 1 ? "día" : "días"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg>${p.injury} d</span>` : ""}${p.red ? `<span class="red" title="Tarjeta roja en la selección${p.red > 1 ? ` (${p.red})` : ""}" aria-label="Tarjeta roja en la selección${p.red > 1 ? `, ${p.red}` : ""}"><i></i>${p.red > 1 ? "×" + p.red : ""}</span>` : ""}${isBot(p) ? `<span class="bot" title="Este equipo no tiene dueño">Bot</span>` : ""}</td>`;
       if (c.key === "team") {
         if (!p.team) return `<td class="l dim">${p.loaded || p.failed ? "—" : "…"}</td>`;
         const ct = p.teamId != null ? TEAM_COUNTRY.get(String(p.teamId)) : "";
@@ -1750,6 +1775,11 @@ function init() {
   $("#onlySusp").addEventListener("click", e => {
     state.onlySusp = !state.onlySusp;
     e.currentTarget.setAttribute("aria-pressed", String(state.onlySusp));
+    render();
+  });
+  $("#onlyNew").addEventListener("click", e => {
+    state.onlyNew = !state.onlyNew;
+    e.currentTarget.setAttribute("aria-pressed", String(state.onlyNew));
     render();
   });
   $("#onlyU21").addEventListener("click", e => {

@@ -98,6 +98,7 @@ Cómo funciona y qué tener en cuenta:
 - **Ocultar Valor** oculta la columna Valor (queda recordado en cada dispositivo).
 - **Países** (a la derecha de Clubes) reemplaza la tabla por un resumen: cada país de los clubes de los jugadores visibles (respeta filtros) y cuántos equipos distintos tiene. Pulsa de nuevo para volver. Requiere haber ejecutado `fetch-players.mjs` (guarda el país de cada club).
 - **U21** muestra solo los jugadores citados a la selección (los que llevan la marca U21).
+- **Nuevos** muestra solo los jugadores marcados con la etiqueta verde **nuevo**: los que no estaban en el respaldo anterior (`data/players.prev.enc.json`). Sin ese archivo no aparece ninguna marca.
 - **Cambios** muestra solo los jugadores con alguna skill que subió o bajó respecto al respaldo semanal.
 
 ## Alineación (alineacion.html)
@@ -134,3 +135,6 @@ Los cambios de la alineación (incluidas las posiciones en la cancha y el orden 
 La tabla de **Países** se ordena por defecto por «Jugadores %», luego por «Equipos» y luego alfabéticamente. El botón **Equipos** muestra la misma clase de tabla por equipo (Equipo, País, Jugadores, Jugadores %), con enlace al equipo en Sokker; respeta los filtros y se exporta con CSV.
 
 **Copiar un jugador**: el botón junto al nombre abre un menú con «Datos para el foro» (formato BBCode con PID, edad, altura, valor, sueldo, club, país y skills con su nivel), «Fila en CSV» y «Solo el PID».
+
+
+Los botones de la barra están agrupados por color: **Sesión** (gris), **Vista** (azul), **Filtros** (verde), **Filas** (naranja) y **Exportar** (rojo).
